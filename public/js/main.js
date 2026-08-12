@@ -4,6 +4,11 @@ import renderDashboard from './views/dashboard.js';
 import renderLivros from './views/livros.js';
 import renderAlunos from './views/alunos.js';
 import renderEmprestimos from './views/emprestimos.js';
+import renderUsuarios from './views/usuarios.js';
+import renderPapeis from './views/papeis.js';
+import renderAuditoria from './views/auditoria.js';
+import renderConfiguracoes from './views/configuracoes.js';
+import { carregarIdentidadeVisual } from './identidadeVisual.js';
 
 const telaLogin = document.getElementById('tela-login');
 const appEl = document.getElementById('app');
@@ -16,7 +21,15 @@ const ROTAS = {
   '/livros': renderLivros,
   '/alunos': renderAlunos,
   '/emprestimos': renderEmprestimos,
+  '/usuarios': renderUsuarios,
+  '/papeis': renderPapeis,
+  '/auditoria': renderAuditoria,
+  '/configuracoes': renderConfiguracoes,
 };
+
+function temPermissao(usuario, codigo) {
+  return usuario.papel?.acessoTotal || usuario.permissoes?.includes(codigo);
+}
 
 function mostrarApp() {
   telaLogin.classList.add('hidden');
@@ -25,6 +38,9 @@ function mostrarApp() {
   if (usuario) {
     document.getElementById('user-nome').textContent = usuario.nome;
     document.getElementById('user-avatar').textContent = usuario.nome.charAt(0).toUpperCase();
+    document.querySelectorAll('.nav-link[data-permissao]').forEach(link => {
+      link.classList.toggle('hidden', !temPermissao(usuario, link.dataset.permissao));
+    });
   }
   rotear();
 }
@@ -70,7 +86,12 @@ formLogin.addEventListener('submit', async (e) => {
   }
 });
 
-document.getElementById('btn-logout').addEventListener('click', () => {
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  try {
+    await api.post('/api/auth/logout');
+  } catch (err) {
+    // mesmo se a chamada falhar (ex: sessão já inválida), a sessão local é limpa de qualquer forma
+  }
   limparSessao();
   mostrarLogin();
 });
@@ -81,6 +102,8 @@ window.addEventListener('sessao-expirada', () => {
 });
 
 window.addEventListener('hashchange', rotear);
+
+carregarIdentidadeVisual();
 
 if (getToken()) {
   mostrarApp();

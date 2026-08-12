@@ -12,8 +12,8 @@
 <!-- TELA DE LOGIN -->
 <div id="tela-login" class="login-screen hidden">
   <form id="form-login" class="login-card">
-    <div class="login-logo">📚</div>
-    <h1>Biblioteca Escolar</h1>
+    <div class="login-logo" data-logo-biblioteca>📚</div>
+    <h1 data-nome-biblioteca>Biblioteca Escolar</h1>
     <p class="login-sub">Entre com sua conta para continuar</p>
     <div class="campo">
       <label for="login-email">E-mail</label>
@@ -31,12 +31,16 @@
 <!-- APP -->
 <div id="app" class="app hidden">
   <aside class="sidebar">
-    <div class="sidebar-logo">📚 <span>Biblioteca</span></div>
+    <div class="sidebar-logo"><span data-logo-biblioteca>📚</span> <span data-nome-biblioteca>Biblioteca</span></div>
     <nav class="sidebar-nav">
       <a href="#/" data-rota="/" class="nav-link">🏠 <span>Dashboard</span></a>
       <a href="#/livros" data-rota="/livros" class="nav-link">📖 <span>Livros</span></a>
       <a href="#/alunos" data-rota="/alunos" class="nav-link">🎓 <span>Alunos</span></a>
       <a href="#/emprestimos" data-rota="/emprestimos" class="nav-link">🔄 <span>Empréstimos</span></a>
+      <a href="#/usuarios" data-rota="/usuarios" class="nav-link" data-permissao="usuarios.gerenciar">👤 <span>Usuários</span></a>
+      <a href="#/papeis" data-rota="/papeis" class="nav-link" data-permissao="papeis.gerenciar">🛡️ <span>Papéis</span></a>
+      <a href="#/auditoria" data-rota="/auditoria" class="nav-link" data-permissao="auditoria.ver">📜 <span>Auditoria</span></a>
+      <a href="#/configuracoes" data-rota="/configuracoes" class="nav-link" data-permissao="configuracoes.gerenciar">⚙️ <span>Configurações</span></a>
     </nav>
     <div class="sidebar-user">
       <div class="user-avatar" id="user-avatar">?</div>

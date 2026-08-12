@@ -35,16 +35,27 @@ export default async function renderEmprestimos(container) {
     <div class="toolbar">
       <button id="btn-pendentes" class="btn btn-primary btn-sm">Pendentes</button>
       <button id="btn-historico" class="btn btn-secondary btn-sm">Histórico completo</button>
+      <select id="filtro-aluno"><option value="">Aluno (todos)</option></select>
+      <input type="date" id="filtro-de" title="De">
+      <input type="date" id="filtro-ate" title="Até">
+      <button id="btn-limpar-filtros" class="btn btn-secondary btn-sm">Limpar filtros</button>
     </div>
 
     <div class="tabela-wrap">
       <table>
         <thead>
-          <tr><th>Aluno</th><th>Turma</th><th>Livro</th><th>Emprestado em</th><th>Previsto</th><th>Status</th><th></th></tr>
+          <tr>
+            <th>Aluno</th><th>Turma</th><th>Livro</th>
+            <th data-ordenar="data_emprestimo" style="cursor:pointer;user-select:none;">Emprestado em <span class="seta-ordenacao" data-seta="data_emprestimo"></span></th>
+            <th data-ordenar="data_prevista" style="cursor:pointer;user-select:none;">Previsto <span class="seta-ordenacao" data-seta="data_prevista"></span></th>
+            <th>Status</th><th></th>
+          </tr>
         </thead>
         <tbody id="tbody-emprestimos"></tbody>
       </table>
     </div>
+
+    <div class="toolbar" id="paginacao" style="justify-content:flex-end;margin-top:14px;"></div>
   `;
 
   const selectAluno = container.querySelector('#f-aluno');
@@ -54,10 +65,21 @@ export default async function renderEmprestimos(container) {
   const erroEl = container.querySelector('#emprestimo-erro');
   const btnPendentes = container.querySelector('#btn-pendentes');
   const btnHistorico = container.querySelector('#btn-historico');
+  const filtroAluno = container.querySelector('#filtro-aluno');
+  const filtroDe = container.querySelector('#filtro-de');
+  const filtroAte = container.querySelector('#filtro-ate');
+  const paginacaoEl = container.querySelector('#paginacao');
 
-  const daquiSeteDias = new Date();
-  daquiSeteDias.setDate(daquiSeteDias.getDate() + 7);
-  inputData.value = daquiSeteDias.toISOString().slice(0, 10);
+  const { dias_emprestimo_padrao: diasPadrao } = await api.get('/api/configuracoes');
+  const dataPadrao = new Date();
+  dataPadrao.setDate(dataPadrao.getDate() + diasPadrao);
+  inputData.value = dataPadrao.toISOString().slice(0, 10);
+
+  let modoAtual = 'pendentes';
+  let pagina = 1;
+  const porPagina = 20;
+  let ordenarPor = 'data_prevista';
+  let ordem = 'asc';
 
   function badgeStatus(status) {
     if (status === 'atrasado') return '<span class="badge badge-perigo">Atrasado</span>';
@@ -65,10 +87,16 @@ export default async function renderEmprestimos(container) {
     return '<span class="badge badge-aviso">Pendente</span>';
   }
 
+  function atualizarSetas() {
+    container.querySelectorAll('.seta-ordenacao').forEach(el => {
+      el.textContent = el.dataset.seta === ordenarPor ? (ordem === 'asc' ? '▲' : '▼') : '';
+    });
+  }
+
   async function carregarSelects() {
-    const [alunos, livros] = await Promise.all([
-      api.get('/api/alunos'),
-      api.get('/api/livros?disponivel=true'),
+    const [{ dados: alunos }, { dados: livros }] = await Promise.all([
+      api.get('/api/alunos?porPagina=500'),
+      api.get('/api/livros?disponivel=true&porPagina=500'),
     ]);
     selectAluno.innerHTML = alunos.length
       ? alunos.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}${a.turma ? ' — ' + escapeHtml(a.turma) : ''}</option>`).join('')
@@ -76,38 +104,54 @@ export default async function renderEmprestimos(container) {
     selectLivro.innerHTML = livros.length
       ? livros.map(l => `<option value="${l.id}">${escapeHtml(l.titulo)} (${escapeHtml(l.tombo)})</option>`).join('')
       : '<option value="">Nenhum livro disponível</option>';
-  }
 
-  let modoAtual = 'pendentes';
+    filtroAluno.innerHTML = '<option value="">Aluno (todos)</option>'
+      + alunos.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join('');
+  }
 
   async function carregarTabela() {
     tbody.innerHTML = `<tr><td colspan="7" class="celula-vazia">Carregando…</td></tr>`;
-    const dados = modoAtual === 'historico'
-      ? await api.get('/api/emprestimos')
-      : await api.get('/api/emprestimos/pendentes');
+    const params = new URLSearchParams({ pagina, porPagina, ordenarPor, ordem });
+    if (filtroAluno.value) params.set('aluno_id', filtroAluno.value);
+    if (filtroDe.value) params.set('de', filtroDe.value);
+    if (filtroAte.value) params.set('ate', filtroAte.value);
+
+    const rota = modoAtual === 'historico' ? '/api/emprestimos' : '/api/emprestimos/pendentes';
+    const { dados, total } = await api.get(`${rota}?${params.toString()}`);
 
     if (!dados.length) {
       tbody.innerHTML = `<tr><td colspan="7" class="celula-vazia">Nenhum registro encontrado.</td></tr>`;
-      return;
+    } else {
+      tbody.innerHTML = dados.map(e => `
+        <tr>
+          <td>${escapeHtml(e.aluno)}</td>
+          <td>${escapeHtml(e.turma || '—')}</td>
+          <td>${escapeHtml(e.livro)}</td>
+          <td>${formatarData(e.data_emprestimo)}</td>
+          <td>${formatarData(e.data_prevista)}</td>
+          <td>${badgeStatus(e.status)}</td>
+          <td class="tabela-acoes">
+            ${e.status !== 'devolvido' ? `<button class="btn btn-primary btn-sm" data-devolver="${e.id}">Devolver</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
     }
 
-    tbody.innerHTML = dados.map(e => `
-      <tr>
-        <td>${escapeHtml(e.aluno)}</td>
-        <td>${escapeHtml(e.turma || '—')}</td>
-        <td>${escapeHtml(e.livro)}</td>
-        <td>${formatarData(e.data_emprestimo)}</td>
-        <td>${formatarData(e.data_prevista)}</td>
-        <td>${badgeStatus(e.status)}</td>
-        <td class="tabela-acoes">
-          ${e.status !== 'devolvido' ? `<button class="btn btn-primary btn-sm" data-devolver="${e.id}">Devolver</button>` : ''}
-        </td>
-      </tr>
-    `).join('');
+    atualizarSetas();
+
+    const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
+    paginacaoEl.innerHTML = `
+      <button id="btn-anterior" class="btn btn-secondary btn-sm" ${pagina <= 1 ? 'disabled' : ''}>← Anterior</button>
+      <span class="sub">Página ${pagina} de ${totalPaginas} (${total} registro(s))</span>
+      <button id="btn-proxima" class="btn btn-secondary btn-sm" ${pagina >= totalPaginas ? 'disabled' : ''}>Próxima →</button>
+    `;
+    paginacaoEl.querySelector('#btn-anterior').addEventListener('click', () => { pagina--; carregarTabela(); });
+    paginacaoEl.querySelector('#btn-proxima').addEventListener('click', () => { pagina++; carregarTabela(); });
   }
 
   async function alternarModo(modo) {
     modoAtual = modo;
+    pagina = 1;
     btnPendentes.classList.toggle('btn-primary', modo === 'pendentes');
     btnPendentes.classList.toggle('btn-secondary', modo !== 'pendentes');
     btnHistorico.classList.toggle('btn-primary', modo === 'historico');
@@ -117,6 +161,28 @@ export default async function renderEmprestimos(container) {
 
   btnPendentes.addEventListener('click', () => alternarModo('pendentes'));
   btnHistorico.addEventListener('click', () => alternarModo('historico'));
+  filtroAluno.addEventListener('change', () => { pagina = 1; carregarTabela(); });
+  filtroDe.addEventListener('change', () => { pagina = 1; carregarTabela(); });
+  filtroAte.addEventListener('change', () => { pagina = 1; carregarTabela(); });
+  container.querySelector('#btn-limpar-filtros').addEventListener('click', () => {
+    filtroAluno.value = ''; filtroDe.value = ''; filtroAte.value = '';
+    pagina = 1;
+    carregarTabela();
+  });
+
+  container.querySelectorAll('[data-ordenar]').forEach(th => {
+    th.addEventListener('click', () => {
+      const coluna = th.dataset.ordenar;
+      if (ordenarPor === coluna) {
+        ordem = ordem === 'asc' ? 'desc' : 'asc';
+      } else {
+        ordenarPor = coluna;
+        ordem = 'asc';
+      }
+      pagina = 1;
+      carregarTabela();
+    });
+  });
 
   container.querySelector('#form-emprestimo').addEventListener('submit', async (e) => {
     e.preventDefault();

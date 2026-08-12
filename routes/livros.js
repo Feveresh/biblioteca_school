@@ -1,10 +1,14 @@
 const router = require('express').Router();
 const c = require('../controllers/livroController');
+const { autorizar } = require('../middleware/permissao');
+const auditoria = require('../middleware/auditoria');
+
+const auditar = auditoria('livros');
 
 router.get('/',       c.listar);
 router.get('/:id',    c.buscar);
-router.post('/',      c.criar);
-router.put('/:id',    c.atualizar);
-router.delete('/:id', c.remover);
+router.post('/',      autorizar('livros.criar'),   auditar, c.criar);
+router.put('/:id',    autorizar('livros.editar'),  auditar, c.atualizar);
+router.delete('/:id', autorizar('livros.excluir'), auditar, c.remover);
 
 module.exports = router;

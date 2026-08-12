@@ -1,8 +1,11 @@
 const pool = require('../config/db');
+const { construirOrdenacao, construirPaginacao } = require('../utils/listagem');
 
-// Listar livros (com busca e filtro por disponibilidade opcionais)
+const COLUNAS_ORDENACAO = ['titulo', 'autor', 'tombo', 'disponivel', 'estante'];
+
+// Listar livros — busca, filtros, ordenação e paginação
 exports.listar = async (req, res) => {
-  const { busca, disponivel } = req.query;
+  const { busca, disponivel, estante, ordenarPor, ordem } = req.query;
   const condicoes = [];
   const valores = [];
 
@@ -14,10 +17,25 @@ exports.listar = async (req, res) => {
     valores.push(disponivel === 'true');
     condicoes.push(`disponivel = $${valores.length}`);
   }
+  if (estante) {
+    valores.push(estante);
+    condicoes.push(`estante = $${valores.length}`);
+  }
 
   const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
-  const { rows } = await pool.query(`SELECT * FROM livros ${where} ORDER BY titulo`, valores);
-  res.json(rows);
+  const orderBy = construirOrdenacao(ordenarPor, ordem, COLUNAS_ORDENACAO, 'titulo');
+  const { pagina, porPagina, offset } = construirPaginacao(req.query);
+
+  const { rows: totalRows } = await pool.query(`SELECT COUNT(*) FROM livros ${where}`, valores);
+  const total = Number(totalRows[0].count);
+
+  const valoresPagina = [...valores, porPagina, offset];
+  const { rows } = await pool.query(
+    `SELECT * FROM livros ${where} ORDER BY ${orderBy} LIMIT $${valoresPagina.length - 1} OFFSET $${valoresPagina.length}`,
+    valoresPagina
+  );
+
+  res.json({ dados: rows, total, pagina, porPagina });
 };
 
 // Buscar livro por ID
@@ -29,14 +47,14 @@ exports.buscar = async (req, res) => {
 
 // Cadastrar livro
 exports.criar = async (req, res) => {
-  const { tombo, titulo, autor } = req.body;
+  const { tombo, titulo, autor, estante, prateleira } = req.body;
   if (!tombo || !titulo) {
     return res.status(400).json({ erro: 'Tombo e título são obrigatórios' });
   }
   try {
     const { rows } = await pool.query(
-      'INSERT INTO livros (tombo, titulo, autor) VALUES ($1, $2, $3) RETURNING *',
-      [tombo, titulo, autor]
+      'INSERT INTO livros (tombo, titulo, autor, estante, prateleira) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [tombo, titulo, autor, estante || null, prateleira || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -49,15 +67,15 @@ exports.criar = async (req, res) => {
 
 // Atualizar livro
 exports.atualizar = async (req, res) => {
-  const { tombo, titulo, autor } = req.body;
+  const { tombo, titulo, autor, estante, prateleira } = req.body;
   if (!tombo || !titulo) {
     return res.status(400).json({ erro: 'Tombo e título são obrigatórios' });
   }
   try {
     const { rows } = await pool.query(
-      `UPDATE livros SET tombo=$1, titulo=$2, autor=$3
-       WHERE id=$4 RETURNING *`,
-      [tombo, titulo, autor, req.params.id]
+      `UPDATE livros SET tombo=$1, titulo=$2, autor=$3, estante=$4, prateleira=$5
+       WHERE id=$6 RETURNING *`,
+      [tombo, titulo, autor, estante || null, prateleira || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ erro: 'Livro não encontrado' });
     res.json(rows[0]);

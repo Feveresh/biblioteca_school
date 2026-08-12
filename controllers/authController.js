@@ -1,15 +1,21 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
+const { buscarUsuarioAutenticado, formatarUsuario } = require('../utils/usuarioAuth');
+const { registrar: registrarAuditoria } = require('../utils/auditoria');
 
 const TOKEN_EXPIRA_EM = '8h';
 
-function gerarToken(usuario) {
-  return jwt.sign(
-    { id: usuario.id, nome: usuario.nome, email: usuario.email },
-    process.env.JWT_SECRET,
-    { expiresIn: TOKEN_EXPIRA_EM }
-  );
+function gerarToken(usuarioId) {
+  // `emitidoEm` em milissegundos (não o `iat` padrão, que só tem precisão de segundo) —
+  // evita ambiguidade ao comparar com `tokens_validos_apos` na revogação de sessão
+  // (ver middleware/auth.js), que precisa de precisão sub-segundo pra ser confiável
+  // logo após um login ou logout (users criados e autenticados quase ao mesmo tempo).
+  return jwt.sign({ id: usuarioId, emitidoEm: Date.now() }, process.env.JWT_SECRET, { expiresIn: TOKEN_EXPIRA_EM });
+}
+
+async function registrarTentativaLogin(email, sucesso) {
+  await pool.query('INSERT INTO login_tentativas (email, sucesso) VALUES ($1, $2)', [email, sucesso]);
 }
 
 // POST /api/auth/login
@@ -19,51 +25,59 @@ exports.login = async (req, res) => {
     return res.status(400).json({ erro: 'Email e senha são obrigatórios' });
   }
 
-  try {
-    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    const usuario = rows[0];
-    if (!usuario) {
-      return res.status(401).json({ erro: 'Credenciais inválidas' });
-    }
+  const { rows: cfgRows } = await pool.query(
+    'SELECT login_max_tentativas, login_bloqueio_minutos FROM configuracoes WHERE id = 1'
+  );
+  const { login_max_tentativas: maxTentativas, login_bloqueio_minutos: bloqueioMinutos } = cfgRows[0];
 
-    const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
-    if (!senhaValida) {
-      return res.status(401).json({ erro: 'Credenciais inválidas' });
-    }
-
-    const token = gerarToken(usuario);
-    res.json({
-      token,
-      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email },
+  const { rows: falhasRows } = await pool.query(
+    `SELECT COUNT(*) FROM login_tentativas
+     WHERE email = $1 AND sucesso = false AND criado_em > NOW() - ($2 || ' minutes')::interval`,
+    [email, bloqueioMinutos]
+  );
+  if (Number(falhasRows[0].count) >= maxTentativas) {
+    return res.status(429).json({
+      erro: `Muitas tentativas de login. Tente novamente em até ${bloqueioMinutos} minuto(s).`,
     });
-  } catch (err) {
-    res.status(500).json({ erro: err.message });
   }
+
+  const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+  const usuario = rows[0];
+
+  if (!usuario || !usuario.ativo) {
+    await registrarTentativaLogin(email, false);
+    return res.status(401).json({ erro: 'Credenciais inválidas' });
+  }
+
+  const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
+  if (!senhaValida) {
+    await registrarTentativaLogin(email, false);
+    return res.status(401).json({ erro: 'Credenciais inválidas' });
+  }
+
+  await registrarTentativaLogin(email, true);
+
+  const usuarioCompleto = await buscarUsuarioAutenticado(usuario.id);
+  const token = gerarToken(usuario.id);
+
+  registrarAuditoria({
+    usuarioId: usuario.id, entidade: 'auth', entidadeId: usuario.id, acao: 'login',
+    ip: req.ip, metodoHttp: req.method, rota: req.originalUrl,
+  }).catch(err => console.error('Falha ao registrar auditoria:', err.message));
+
+  res.json({ token, usuario: formatarUsuario(usuarioCompleto) });
 };
 
-// POST /api/auth/registrar (protegido — só usuário logado pode criar outro usuário)
-exports.registrar = async (req, res) => {
-  const { nome, email, senha } = req.body;
-  if (!nome || !email || !senha) {
-    return res.status(400).json({ erro: 'Nome, email e senha são obrigatórios' });
-  }
-  if (senha.length < 6) {
-    return res.status(400).json({ erro: 'A senha deve ter ao menos 6 caracteres' });
-  }
+// POST /api/auth/logout — revoga todos os tokens emitidos até agora para este usuário
+exports.logout = async (req, res) => {
+  await pool.query('UPDATE users SET tokens_validos_apos = NOW() WHERE id = $1', [req.usuario.id]);
 
-  try {
-    const senhaHash = await bcrypt.hash(senha, 10);
-    const { rows } = await pool.query(
-      'INSERT INTO users (nome, email, senha_hash) VALUES ($1, $2, $3) RETURNING id, nome, email, created_at',
-      [nome, email, senhaHash]
-    );
-    res.status(201).json(rows[0]);
-  } catch (err) {
-    if (err.code === '23505') {
-      return res.status(409).json({ erro: 'Email já cadastrado' });
-    }
-    res.status(500).json({ erro: err.message });
-  }
+  registrarAuditoria({
+    usuarioId: req.usuario.id, entidade: 'auth', entidadeId: req.usuario.id, acao: 'logout',
+    ip: req.ip, metodoHttp: req.method, rota: req.originalUrl,
+  }).catch(err => console.error('Falha ao registrar auditoria:', err.message));
+
+  res.json({ mensagem: 'Sessão encerrada' });
 };
 
 // GET /api/auth/me

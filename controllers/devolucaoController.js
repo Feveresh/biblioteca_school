@@ -33,6 +33,8 @@ exports.devolver = async (req, res) => {
     );
 
     await client.query('COMMIT');
+    res.locals.auditAcao = 'devolver';
+    res.locals.auditEntidadeId = rows[0].id;
     res.json({ mensagem: 'Devolução registrada', emprestimo: rows[0] });
   } catch (err) {
     await client.query('ROLLBACK');

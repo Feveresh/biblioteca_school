@@ -1,8 +1,11 @@
 const pool = require('../config/db');
+const { construirOrdenacao, construirPaginacao } = require('../utils/listagem');
 
-// Listar alunos (com busca opcional por nome/turma)
+const COLUNAS_ORDENACAO = ['nome', 'turma'];
+
+// Listar alunos — busca, filtro por turma, ordenação e paginação
 exports.listar = async (req, res) => {
-  const { busca } = req.query;
+  const { busca, turma, ordenarPor, ordem } = req.query;
   const condicoes = [];
   const valores = [];
 
@@ -10,10 +13,33 @@ exports.listar = async (req, res) => {
     valores.push(`%${busca}%`);
     condicoes.push(`(nome ILIKE $${valores.length} OR turma ILIKE $${valores.length})`);
   }
+  if (turma) {
+    valores.push(turma);
+    condicoes.push(`turma = $${valores.length}`);
+  }
 
   const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
-  const { rows } = await pool.query(`SELECT * FROM alunos ${where} ORDER BY nome`, valores);
-  res.json(rows);
+  const orderBy = construirOrdenacao(ordenarPor, ordem, COLUNAS_ORDENACAO, 'nome');
+  const { pagina, porPagina, offset } = construirPaginacao(req.query);
+
+  const { rows: totalRows } = await pool.query(`SELECT COUNT(*) FROM alunos ${where}`, valores);
+  const total = Number(totalRows[0].count);
+
+  const valoresPagina = [...valores, porPagina, offset];
+  const { rows } = await pool.query(
+    `SELECT * FROM alunos ${where} ORDER BY ${orderBy} LIMIT $${valoresPagina.length - 1} OFFSET $${valoresPagina.length}`,
+    valoresPagina
+  );
+
+  res.json({ dados: rows, total, pagina, porPagina });
+};
+
+// GET /api/alunos/turmas — valores distintos de turma, para popular o filtro
+exports.turmas = async (req, res) => {
+  const { rows } = await pool.query(
+    "SELECT DISTINCT turma FROM alunos WHERE turma IS NOT NULL AND turma <> '' ORDER BY turma"
+  );
+  res.json(rows.map(r => r.turma));
 };
 
 exports.buscar = async (req, res) => {

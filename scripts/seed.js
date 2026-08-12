@@ -27,10 +27,14 @@ async function seed() {
   try {
     const existente = await client.query('SELECT id FROM users WHERE email = $1', [ADMIN.email]);
     if (!existente.rows[0]) {
+      const papelAdmin = await client.query("SELECT id FROM roles WHERE nome = 'Admin'");
+      if (!papelAdmin.rows[0]) {
+        throw new Error('Papel "Admin" não encontrado — rode "npm run migrate" antes do seed.');
+      }
       const senhaHash = await bcrypt.hash(ADMIN.senha, 10);
       await client.query(
-        'INSERT INTO users (nome, email, senha_hash) VALUES ($1, $2, $3)',
-        [ADMIN.nome, ADMIN.email, senhaHash]
+        'INSERT INTO users (nome, email, senha_hash, role_id) VALUES ($1, $2, $3, $4)',
+        [ADMIN.nome, ADMIN.email, senhaHash, papelAdmin.rows[0].id]
       );
       console.log(`✅ Usuário admin criado — email: ${ADMIN.email} / senha: ${ADMIN.senha}`);
     } else {

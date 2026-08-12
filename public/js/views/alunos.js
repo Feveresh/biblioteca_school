@@ -1,6 +1,11 @@
 import { api } from '../api.js';
 import { escapeHtml, mostrarToast, abrirModal, fecharModal, confirmar, debounce } from '../utils.js';
 
+const COLUNAS = [
+  { chave: 'nome', rotulo: 'Nome' },
+  { chave: 'turma', rotulo: 'Turma' },
+];
+
 export default async function renderAlunos(container) {
   container.innerHTML = `
     <div class="view-header">
@@ -12,38 +17,78 @@ export default async function renderAlunos(container) {
     </div>
     <div class="toolbar">
       <input type="search" id="busca-aluno" placeholder="Buscar por nome ou turma…">
+      <select id="filtro-turma"><option value="">Turma (todas)</option></select>
     </div>
     <div class="tabela-wrap">
       <table>
         <thead>
-          <tr><th>Nome</th><th>Turma</th><th></th></tr>
+          <tr>
+            ${COLUNAS.map(c => `<th data-ordenar="${c.chave}" style="cursor:pointer;user-select:none;">${c.rotulo} <span class="seta-ordenacao" data-seta="${c.chave}"></span></th>`).join('')}
+            <th></th>
+          </tr>
         </thead>
         <tbody id="tbody-alunos"></tbody>
       </table>
     </div>
+    <div class="toolbar" id="paginacao" style="justify-content:flex-end;margin-top:14px;"></div>
   `;
 
   const tbody = container.querySelector('#tbody-alunos');
   const inputBusca = container.querySelector('#busca-aluno');
+  const filtroTurma = container.querySelector('#filtro-turma');
+  const paginacaoEl = container.querySelector('#paginacao');
+
+  let pagina = 1;
+  const porPagina = 20;
+  let ordenarPor = 'nome';
+  let ordem = 'asc';
+
+  function atualizarSetas() {
+    container.querySelectorAll('.seta-ordenacao').forEach(el => {
+      el.textContent = el.dataset.seta === ordenarPor ? (ordem === 'asc' ? '▲' : '▼') : '';
+    });
+  }
+
+  async function carregarTurmas() {
+    const turmas = await api.get('/api/alunos/turmas');
+    filtroTurma.innerHTML = '<option value="">Turma (todas)</option>'
+      + turmas.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  }
 
   async function carregar() {
     tbody.innerHTML = `<tr><td colspan="3" class="celula-vazia">Carregando…</td></tr>`;
-    const query = inputBusca.value.trim();
-    const alunos = await api.get(`/api/alunos${query ? `?busca=${encodeURIComponent(query)}` : ''}`);
+    const params = new URLSearchParams({ pagina, porPagina, ordenarPor, ordem });
+    const busca = inputBusca.value.trim();
+    if (busca) params.set('busca', busca);
+    if (filtroTurma.value) params.set('turma', filtroTurma.value);
+
+    const { dados: alunos, total } = await api.get(`/api/alunos?${params.toString()}`);
+
     if (!alunos.length) {
       tbody.innerHTML = `<tr><td colspan="3" class="celula-vazia">Nenhum aluno encontrado.</td></tr>`;
-      return;
+    } else {
+      tbody.innerHTML = alunos.map(a => `
+        <tr>
+          <td>${escapeHtml(a.nome)}</td>
+          <td>${escapeHtml(a.turma || '—')}</td>
+          <td class="tabela-acoes">
+            <button class="btn btn-secondary btn-sm" data-editar="${a.id}">Editar</button>
+            <button class="btn btn-danger btn-sm" data-excluir="${a.id}">Excluir</button>
+          </td>
+        </tr>
+      `).join('');
     }
-    tbody.innerHTML = alunos.map(a => `
-      <tr>
-        <td>${escapeHtml(a.nome)}</td>
-        <td>${escapeHtml(a.turma || '—')}</td>
-        <td class="tabela-acoes">
-          <button class="btn btn-secondary btn-sm" data-editar="${a.id}">Editar</button>
-          <button class="btn btn-danger btn-sm" data-excluir="${a.id}">Excluir</button>
-        </td>
-      </tr>
-    `).join('');
+
+    atualizarSetas();
+
+    const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
+    paginacaoEl.innerHTML = `
+      <button id="btn-anterior" class="btn btn-secondary btn-sm" ${pagina <= 1 ? 'disabled' : ''}>← Anterior</button>
+      <span class="sub">Página ${pagina} de ${totalPaginas} (${total} aluno(s))</span>
+      <button id="btn-proxima" class="btn btn-secondary btn-sm" ${pagina >= totalPaginas ? 'disabled' : ''}>Próxima →</button>
+    `;
+    paginacaoEl.querySelector('#btn-anterior').addEventListener('click', () => { pagina--; carregar(); });
+    paginacaoEl.querySelector('#btn-proxima').addEventListener('click', () => { pagina++; carregar(); });
   }
 
   function abrirFormulario(aluno) {
@@ -84,6 +129,7 @@ export default async function renderAlunos(container) {
           mostrarToast('Aluno cadastrado.', 'sucesso');
         }
         fecharModal();
+        carregarTurmas();
         carregar();
       } catch (err) {
         erroEl.textContent = err.message;
@@ -93,7 +139,22 @@ export default async function renderAlunos(container) {
   }
 
   container.querySelector('#btn-novo-aluno').addEventListener('click', () => abrirFormulario(null));
-  inputBusca.addEventListener('input', debounce(carregar, 350));
+  inputBusca.addEventListener('input', debounce(() => { pagina = 1; carregar(); }, 350));
+  filtroTurma.addEventListener('change', () => { pagina = 1; carregar(); });
+
+  container.querySelectorAll('[data-ordenar]').forEach(th => {
+    th.addEventListener('click', () => {
+      const coluna = th.dataset.ordenar;
+      if (ordenarPor === coluna) {
+        ordem = ordem === 'asc' ? 'desc' : 'asc';
+      } else {
+        ordenarPor = coluna;
+        ordem = 'asc';
+      }
+      pagina = 1;
+      carregar();
+    });
+  });
 
   tbody.addEventListener('click', async (e) => {
     const idEditar = e.target.dataset.editar;
@@ -110,6 +171,7 @@ export default async function renderAlunos(container) {
       try {
         await api.delete(`/api/alunos/${idExcluir}`);
         mostrarToast('Aluno removido.', 'sucesso');
+        carregarTurmas();
         carregar();
       } catch (err) {
         mostrarToast(err.message, 'erro');
@@ -117,5 +179,6 @@ export default async function renderAlunos(container) {
     }
   });
 
+  await carregarTurmas();
   await carregar();
 }

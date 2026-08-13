@@ -1,6 +1,7 @@
 import { api, getUsuario } from '../api.js';
 import { mostrarToast, escapeHtml } from '../utils.js';
 import { aplicarIdentidadeVisual, atualizarCacheIdentidadeVisual } from '../identidadeVisual.js';
+import { temaAtual, alternarTema } from '../tema.js';
 
 const TAMANHO_MAX_LOGO = 150 * 1024;
 const MIMES_PERMITIDOS = ['image/png', 'image/jpeg', 'image/svg+xml'];
@@ -10,6 +11,12 @@ const CORES = [
   { campo: 'cor_menu', id: 'f-cor-menu', rotulo: 'Menu (barra lateral)' },
   { campo: 'cor_login', id: 'f-cor-login', rotulo: 'Tela de login' },
   { campo: 'cor_botoes', id: 'f-cor-botoes', rotulo: 'Botões' },
+];
+
+const ABAS = [
+  { id: 'geral', rotulo: 'Geral' },
+  { id: 'visual', rotulo: 'Visual' },
+  { id: 'administracao', rotulo: 'Administração' },
 ];
 
 function temPermissao(usuario, codigo) {
@@ -39,62 +46,77 @@ export default async function renderConfiguracoes(container) {
       </div>
     </div>
 
+    <div class="abas">
+      ${ABAS.map((a, i) => `<button type="button" class="aba-btn ${i === 0 ? 'ativa' : ''}" data-aba="${a.id}">${a.rotulo}</button>`).join('')}
+    </div>
+
     <form id="form-configuracoes">
-      <div class="painel">
-        <h2>Geral</h2>
-        <div class="form-linha">
-          <div class="campo">
-            <label for="f-nome">Nome da biblioteca</label>
-            <input id="f-nome" required value="${escapeHtml(config.nome_biblioteca)}" ${desabilitado}>
-          </div>
-          <div class="campo">
-            <label for="f-dias">Dias de empréstimo (padrão)</label>
-            <input type="number" id="f-dias" min="1" required value="${config.dias_emprestimo_padrao}" ${desabilitado}>
-          </div>
-          <div class="campo">
-            <label for="f-limite">Limite de livros por aluno</label>
-            <input type="number" id="f-limite" min="1" value="${config.limite_livros_por_aluno ?? ''}" placeholder="Sem limite" ${desabilitado}>
-          </div>
-        </div>
-      </div>
-
-      <div class="painel">
-        <h2>Identidade visual</h2>
-        <div class="form-linha">
-          ${CORES.map(c => `
+      <div class="aba-conteudo" data-aba-conteudo="geral">
+        <div class="painel">
+          <div class="form-linha">
             <div class="campo">
-              <label for="${c.id}">${c.rotulo}</label>
-              <input type="color" id="${c.id}" value="${config[c.campo]}" ${desabilitado} style="height:42px;padding:4px;">
+              <label for="f-nome">Nome da biblioteca</label>
+              <input id="f-nome" required value="${escapeHtml(config.nome_biblioteca)}" ${desabilitado}>
             </div>
-          `).join('')}
-        </div>
-        <div class="form-linha">
-          <div class="campo">
-            <label for="f-logo">Logo (PNG, JPEG ou SVG, até 150KB)</label>
-            <input type="file" id="f-logo" accept="image/png,image/jpeg,image/svg+xml" ${desabilitado}>
-          </div>
-          <div class="campo">
-            <label>Prévia</label>
-            <div id="logo-preview">${config.logo_data_url ? `<img src="${config.logo_data_url}" alt="Logo atual" style="max-height:88px;">` : '<span class="sub">Sem logo</span>'}</div>
+            <div class="campo">
+              <label for="f-dias">Dias de empréstimo (padrão)</label>
+              <input type="number" id="f-dias" min="1" required value="${config.dias_emprestimo_padrao}" ${desabilitado}>
+            </div>
+            <div class="campo">
+              <label for="f-limite">Limite de livros por aluno</label>
+              <input type="number" id="f-limite" min="1" value="${config.limite_livros_por_aluno ?? ''}" placeholder="Sem limite" ${desabilitado}>
+            </div>
           </div>
         </div>
-        ${podeEditar ? '<button type="button" id="btn-remover-logo" class="btn btn-secondary btn-sm">Remover logo</button>' : ''}
       </div>
 
-      <div class="painel">
-        <h2>Segurança</h2>
-        <div class="form-linha">
-          <div class="campo">
-            <label for="f-max-tentativas">Máx. tentativas de login</label>
-            <input type="number" id="f-max-tentativas" min="1" required value="${config.login_max_tentativas}" ${desabilitado}>
+      <div class="aba-conteudo hidden" data-aba-conteudo="visual">
+        <div class="painel">
+          <h2>Cores</h2>
+          <div class="form-linha">
+            ${CORES.map(c => `
+              <div class="campo">
+                <label for="${c.id}">${c.rotulo}</label>
+                <input type="color" id="${c.id}" value="${config[c.campo]}" ${desabilitado} style="height:42px;padding:4px;">
+              </div>
+            `).join('')}
           </div>
-          <div class="campo">
-            <label for="f-bloqueio">Minutos de bloqueio</label>
-            <input type="number" id="f-bloqueio" min="1" required value="${config.login_bloqueio_minutos}" ${desabilitado}>
+          <div class="form-linha">
+            <div class="campo">
+              <label for="f-logo">Logo (PNG, JPEG ou SVG, até 150KB)</label>
+              <input type="file" id="f-logo" accept="image/png,image/jpeg,image/svg+xml" ${desabilitado}>
+            </div>
+            <div class="campo">
+              <label>Prévia</label>
+              <div id="logo-preview">${config.logo_data_url ? `<img src="${config.logo_data_url}" alt="Logo atual" style="max-height:88px;">` : '<span class="sub">Sem logo</span>'}</div>
+            </div>
           </div>
-          <div class="campo">
-            <label for="f-retencao">Retenção da auditoria (dias)</label>
-            <input type="number" id="f-retencao" min="1" required value="${config.auditoria_retencao_dias}" ${desabilitado}>
+          ${podeEditar ? '<button type="button" id="btn-remover-logo" class="btn btn-secondary btn-sm">Remover logo</button>' : ''}
+        </div>
+
+        <div class="painel">
+          <h2>Tema</h2>
+          <p class="sub" style="margin:0 0 14px;">Preferência pessoal deste navegador — não afeta outros usuários.</p>
+          <button type="button" id="btn-tema" class="btn btn-secondary"></button>
+        </div>
+      </div>
+
+      <div class="aba-conteudo hidden" data-aba-conteudo="administracao">
+        <div class="painel">
+          <h2>Segurança do login</h2>
+          <div class="form-linha">
+            <div class="campo">
+              <label for="f-max-tentativas">Máx. tentativas de login</label>
+              <input type="number" id="f-max-tentativas" min="1" required value="${config.login_max_tentativas}" ${desabilitado}>
+            </div>
+            <div class="campo">
+              <label for="f-bloqueio">Minutos de bloqueio</label>
+              <input type="number" id="f-bloqueio" min="1" required value="${config.login_bloqueio_minutos}" ${desabilitado}>
+            </div>
+            <div class="campo">
+              <label for="f-retencao">Retenção da auditoria (dias)</label>
+              <input type="number" id="f-retencao" min="1" required value="${config.auditoria_retencao_dias}" ${desabilitado}>
+            </div>
           </div>
         </div>
       </div>
@@ -103,6 +125,24 @@ export default async function renderConfiguracoes(container) {
       ${podeEditar ? '<button type="submit" class="btn btn-primary">Salvar configurações</button>' : ''}
     </form>
   `;
+
+  // Abas — só alternam visibilidade, é tudo o mesmo <form> (um único "Salvar" pro conjunto todo)
+  container.querySelectorAll('.aba-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.aba-btn').forEach(b => b.classList.toggle('ativa', b === btn));
+      container.querySelectorAll('[data-aba-conteudo]').forEach(secao => {
+        secao.classList.toggle('hidden', secao.dataset.abaConteudo !== btn.dataset.aba);
+      });
+    });
+  });
+
+  // Tema — preferência pessoal do navegador, sempre interativa independente de permissão
+  const btnTema = container.querySelector('#btn-tema');
+  function atualizarBotaoTema() {
+    btnTema.textContent = temaAtual() === 'dark' ? '☀️ Modo claro' : '🌙 Modo escuro';
+  }
+  btnTema.addEventListener('click', () => { alternarTema(); atualizarBotaoTema(); });
+  atualizarBotaoTema();
 
   if (!podeEditar) return;
 

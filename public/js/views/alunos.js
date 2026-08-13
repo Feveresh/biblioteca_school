@@ -6,6 +6,8 @@ const COLUNAS = [
   { chave: 'turma', rotulo: 'Turma' },
 ];
 
+const NOVA_TURMA = '__nova__';
+
 export default async function renderAlunos(container) {
   container.innerHTML = `
     <div class="view-header">
@@ -42,6 +44,7 @@ export default async function renderAlunos(container) {
   const porPagina = 20;
   let ordenarPor = 'nome';
   let ordem = 'asc';
+  let turmas = [];
 
   function atualizarSetas() {
     container.querySelectorAll('.seta-ordenacao').forEach(el => {
@@ -50,9 +53,9 @@ export default async function renderAlunos(container) {
   }
 
   async function carregarTurmas() {
-    const turmas = await api.get('/api/alunos/turmas');
+    turmas = await api.get('/api/turmas');
     filtroTurma.innerHTML = '<option value="">Turma (todas)</option>'
-      + turmas.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+      + turmas.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
   }
 
   async function carregar() {
@@ -60,7 +63,7 @@ export default async function renderAlunos(container) {
     const params = new URLSearchParams({ pagina, porPagina, ordenarPor, ordem });
     const busca = inputBusca.value.trim();
     if (busca) params.set('busca', busca);
-    if (filtroTurma.value) params.set('turma', filtroTurma.value);
+    if (filtroTurma.value) params.set('turma_id', filtroTurma.value);
 
     const { dados: alunos, total } = await api.get(`/api/alunos?${params.toString()}`);
 
@@ -70,7 +73,7 @@ export default async function renderAlunos(container) {
       tbody.innerHTML = alunos.map(a => `
         <tr>
           <td>${escapeHtml(a.nome)}</td>
-          <td>${escapeHtml(a.turma || '—')}</td>
+          <td>${escapeHtml(a.turma_nome || '—')}</td>
           <td class="tabela-acoes">
             <a href="#/alunos/${a.id}" class="btn btn-secondary btn-sm">Histórico</a>
             <button class="btn btn-secondary btn-sm" data-editar="${a.id}">Editar</button>
@@ -92,6 +95,10 @@ export default async function renderAlunos(container) {
     paginacaoEl.querySelector('#btn-proxima').addEventListener('click', () => { pagina++; carregar(); });
   }
 
+  function opcoesTurma(selecionada) {
+    return turmas.map(t => `<option value="${t.id}" ${t.id === selecionada ? 'selected' : ''}>${escapeHtml(t.nome)}</option>`).join('');
+  }
+
   function abrirFormulario(aluno) {
     const editando = Boolean(aluno);
     const corpo = abrirModal(editando ? 'Editar aluno' : 'Novo aluno', `
@@ -102,7 +109,12 @@ export default async function renderAlunos(container) {
         </div>
         <div class="campo">
           <label for="f-turma">Turma</label>
-          <input id="f-turma" value="${aluno && aluno.turma ? escapeHtml(aluno.turma) : ''}">
+          <select id="f-turma">
+            <option value="">Sem turma</option>
+            ${opcoesTurma(aluno ? aluno.turma_id : null)}
+            <option value="${NOVA_TURMA}">+ Adicionar nova turma…</option>
+          </select>
+          <input type="text" id="f-turma-nova" placeholder="Nome da nova turma" class="hidden" style="margin-top:8px;">
         </div>
         <p id="form-aluno-erro" class="mensagem-erro hidden"></p>
         <div class="modal-acoes">
@@ -112,16 +124,38 @@ export default async function renderAlunos(container) {
       </form>
     `);
 
+    const selectTurma = corpo.querySelector('#f-turma');
+    const inputTurmaNova = corpo.querySelector('#f-turma-nova');
+    selectTurma.addEventListener('change', () => {
+      const ehNova = selectTurma.value === NOVA_TURMA;
+      inputTurmaNova.classList.toggle('hidden', !ehNova);
+      if (ehNova) inputTurmaNova.focus();
+    });
+
     corpo.querySelector('#cancelar-aluno').addEventListener('click', fecharModal);
     corpo.querySelector('#form-aluno').addEventListener('submit', async (e) => {
       e.preventDefault();
       const erroEl = corpo.querySelector('#form-aluno-erro');
       erroEl.classList.add('hidden');
-      const dados = {
-        nome: corpo.querySelector('#f-nome').value.trim(),
-        turma: corpo.querySelector('#f-turma').value.trim() || null,
-      };
+
+      let turmaId = selectTurma.value || null;
       try {
+        if (turmaId === NOVA_TURMA) {
+          const nomeNova = inputTurmaNova.value.trim();
+          if (!nomeNova) {
+            erroEl.textContent = 'Digite o nome da nova turma.';
+            erroEl.classList.remove('hidden');
+            return;
+          }
+          const novaTurma = await api.post('/api/turmas', { nome: nomeNova });
+          turmas.push(novaTurma);
+          turmaId = novaTurma.id;
+        }
+
+        const dados = {
+          nome: corpo.querySelector('#f-nome').value.trim(),
+          turma_id: turmaId,
+        };
         if (editando) {
           await api.put(`/api/alunos/${aluno.id}`, dados);
           mostrarToast('Aluno atualizado.', 'sucesso');
@@ -130,7 +164,7 @@ export default async function renderAlunos(container) {
           mostrarToast('Aluno cadastrado.', 'sucesso');
         }
         fecharModal();
-        carregarTurmas();
+        await carregarTurmas();
         carregar();
       } catch (err) {
         erroEl.textContent = err.message;

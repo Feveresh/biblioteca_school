@@ -15,7 +15,9 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/identidade-visual', require('./routes/identidadeVisual'));
 
 app.use('/api/livros',      autenticar, require('./routes/livros'));
+app.use('/api/generos',     autenticar, require('./routes/generos'));
 app.use('/api/alunos',      autenticar, require('./routes/alunos'));
+app.use('/api/turmas',      autenticar, require('./routes/turmas'));
 app.use('/api/emprestimos', autenticar, require('./routes/emprestimos'));
 app.use('/api/emprestimos', autenticar, require('./routes/devolucoes'));
 app.use('/api/dashboard',   autenticar, require('./routes/dashboard'));

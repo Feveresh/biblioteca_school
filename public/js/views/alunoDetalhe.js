@@ -22,7 +22,7 @@ export default async function renderAlunoDetalhe(container, { id }) {
     <div class="view-header">
       <div>
         <h1>${escapeHtml(aluno.nome)}</h1>
-        <div class="sub">${aluno.turma ? escapeHtml(aluno.turma) + ' — ' : ''}Histórico de empréstimos</div>
+        <div class="sub">${aluno.turma_nome ? escapeHtml(aluno.turma_nome) + ' — ' : ''}Histórico de empréstimos</div>
       </div>
       <a href="#/alunos" class="btn btn-secondary">← Voltar para Alunos</a>
     </div>

@@ -65,23 +65,42 @@ CREATE TABLE users (
   created_at            TIMESTAMP DEFAULT NOW()
 );
 
+-- ===== Gêneros (catálogo fixo, com opção de adicionar novos pela tela de livros) =====
+CREATE TABLE generos (
+  id    SERIAL PRIMARY KEY,
+  nome  VARCHAR(60) UNIQUE NOT NULL
+);
+INSERT INTO generos (nome) VALUES
+  ('Aventura'), ('Biografia'), ('Clássico'), ('Comédia'), ('Didático'),
+  ('Drama'), ('Fantasia'), ('Ficção Científica'), ('História'), ('Infantil'),
+  ('Poesia'), ('Romance'), ('Suspense'), ('Terror'), ('Outro');
+
 -- ===== Livros =====
 CREATE TABLE livros (
-  id          SERIAL PRIMARY KEY,
-  tombo       VARCHAR(20) UNIQUE NOT NULL,  -- número do carimbo
-  titulo      VARCHAR(200) NOT NULL,
-  autor       VARCHAR(150),
-  estante     VARCHAR(30),
-  prateleira  VARCHAR(30),
-  disponivel  BOOLEAN DEFAULT TRUE,
-  created_at  TIMESTAMP DEFAULT NOW()
+  id              SERIAL PRIMARY KEY,
+  tombo           VARCHAR(20) UNIQUE NOT NULL,  -- número do carimbo
+  titulo          VARCHAR(200) NOT NULL,
+  autor           VARCHAR(150),
+  editora         VARCHAR(150),
+  ano_publicacao  SMALLINT CHECK (ano_publicacao IS NULL OR ano_publicacao BETWEEN 1400 AND 2100),
+  estante         VARCHAR(30),
+  prateleira      VARCHAR(30),
+  genero_id       INT REFERENCES generos(id),
+  disponivel      BOOLEAN DEFAULT TRUE,
+  created_at      TIMESTAMP DEFAULT NOW()
+);
+
+-- ===== Turmas (catálogo, mesmo padrão do gênero de livro) =====
+CREATE TABLE turmas (
+  id   SERIAL PRIMARY KEY,
+  nome VARCHAR(50) UNIQUE NOT NULL
 );
 
 -- ===== Alunos =====
 CREATE TABLE alunos (
-  id        SERIAL PRIMARY KEY,
-  nome      VARCHAR(150) NOT NULL,
-  turma     VARCHAR(50),
+  id         SERIAL PRIMARY KEY,
+  nome       VARCHAR(150) NOT NULL,
+  turma_id   INT REFERENCES turmas(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -158,4 +177,7 @@ INSERT INTO schema_migrations (nome) VALUES
   ('005_login_tentativas.sql'),
   ('006_log_auditoria.sql'),
   ('007_identidade_visual_expandida.sql'),
-  ('008_renovacao_emprestimo.sql');
+  ('008_renovacao_emprestimo.sql'),
+  ('009_genero_livros.sql'),
+  ('010_livro_editora_ano.sql'),
+  ('011_turma_catalogo.sql');

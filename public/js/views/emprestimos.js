@@ -100,7 +100,7 @@ export default async function renderEmprestimos(container) {
       api.get('/api/livros?disponivel=true&porPagina=500'),
     ]);
     selectAluno.innerHTML = alunos.length
-      ? alunos.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}${a.turma ? ' — ' + escapeHtml(a.turma) : ''}</option>`).join('')
+      ? alunos.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}${a.turma_nome ? ' — ' + escapeHtml(a.turma_nome) : ''}</option>`).join('')
       : '<option value="">Nenhum aluno cadastrado</option>';
     selectLivro.innerHTML = livros.length
       ? livros.map(l => `<option value="${l.id}">${escapeHtml(l.titulo)} (${escapeHtml(l.tombo)})</option>`).join('')

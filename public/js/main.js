@@ -39,27 +39,6 @@ function temPermissao(usuario, codigo) {
   return codigo.split(',').some(c => usuario.permissoes?.includes(c));
 }
 
-const TEMA_KEY = 'biblioteca_tema';
-const btnTema = document.getElementById('btn-tema');
-
-function temaAtual() {
-  return document.documentElement.getAttribute('data-theme')
-    || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-}
-
-function atualizarIconeTema() {
-  btnTema.textContent = temaAtual() === 'dark' ? '☀️' : '🌙';
-}
-
-btnTema.addEventListener('click', () => {
-  const novoTema = temaAtual() === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', novoTema);
-  localStorage.setItem(TEMA_KEY, novoTema);
-  atualizarIconeTema();
-});
-
-atualizarIconeTema();
-
 function mostrarApp() {
   telaLogin.classList.add('hidden');
   appEl.classList.remove('hidden');

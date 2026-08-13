@@ -7,11 +7,15 @@
   /* Identidade visual — 4 cores configuráveis independentemente em Configurações
      (ver public/js/identidadeVisual.js); os valores abaixo são o padrão de fábrica. */
   --color-menu-bg: #1e1b4b;
+  --color-menu-text-forte: #ffffff;
+  --color-menu-text: #c7d2fe;
+  --color-menu-text-suave: #a5b4fc;
   --color-login-bg: #4f46e5;
   --color-login-bg-mid: #4338ca;
   --color-login-bg-2: #818cf8;
   --color-button: #4f46e5;
   --color-button-hover: #4338ca;
+  --color-button-text: #ffffff;
   --color-text: #1e2130;
   --color-text-muted: #6b7280;
   --color-border: #e5e7eb;
@@ -168,7 +172,7 @@ input, select { font-family: inherit; }
   transition: background-color .15s, opacity .15s;
 }
 .btn-block { width: 100%; }
-.btn-primary { background: var(--color-button); color: #fff; }
+.btn-primary { background: var(--color-button); color: var(--color-button-text); }
 .btn-primary:hover { background: var(--color-button-hover); }
 .btn-secondary { background: var(--color-border); color: var(--color-text); }
 .btn-secondary:hover { background: var(--color-border-hover); }
@@ -184,7 +188,7 @@ input, select { font-family: inherit; }
   width: var(--sidebar-w);
   flex-shrink: 0;
   background: var(--color-menu-bg);
-  color: #e0e7ff;
+  color: var(--color-menu-text);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -195,7 +199,7 @@ input, select { font-family: inherit; }
   font-size: 20px;
   font-weight: 700;
   padding: 22px 20px;
-  color: #fff;
+  color: var(--color-menu-text-forte);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -215,14 +219,14 @@ input, select { font-family: inherit; }
   gap: 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  color: #c7d2fe;
+  color: var(--color-menu-text);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
   transition: background-color .15s, color .15s;
 }
-.nav-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
-.nav-link.ativo { background: var(--color-button); color: #fff; }
+.nav-link:hover { background: rgba(255,255,255,0.08); color: var(--color-menu-text-forte); }
+.nav-link.ativo { background: var(--color-button); color: var(--color-button-text); }
 
 .sidebar-user {
   padding: 16px 20px;
@@ -231,31 +235,20 @@ input, select { font-family: inherit; }
   align-items: center;
   gap: 10px;
 }
-.btn-tema {
-  background: rgba(255,255,255,0.08);
-  border: none;
-  border-radius: 8px;
-  width: 32px; height: 32px;
-  font-size: 15px;
-  line-height: 1;
-  color: #fff;
-  flex-shrink: 0;
-}
-.btn-tema:hover { background: rgba(255,255,255,0.16); }
 .user-avatar {
   width: 36px; height: 36px;
   border-radius: 50%;
   background: var(--color-button);
-  color: #fff;
+  color: var(--color-button-text);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700;
   font-size: 14px;
   flex-shrink: 0;
 }
 .user-info { min-width: 0; }
-.user-nome { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.link-sair { background: none; border: none; padding: 0; color: #a5b4fc; font-size: 12px; text-decoration: underline; }
-.link-sair:hover { color: #fff; }
+.user-nome { font-size: 13px; font-weight: 600; color: var(--color-menu-text-forte); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.link-sair { background: none; border: none; padding: 0; color: var(--color-menu-text-suave); font-size: 12px; text-decoration: underline; }
+.link-sair:hover { color: var(--color-menu-text-forte); }
 
 .conteudo {
   margin-left: var(--sidebar-w);
@@ -389,6 +382,14 @@ tbody tr:hover { background: var(--color-row-hover); }
   font-size: 12px;
   font-weight: 600;
 }
+.badge-clicavel {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter .15s, transform .1s;
+}
+.badge-clicavel:hover { filter: brightness(0.93); }
+.badge-clicavel:active { transform: scale(0.96); }
 .badge-sucesso { background: var(--color-success-soft); color: var(--color-success); }
 .badge-aviso { background: var(--color-warning-soft); color: var(--color-warning); }
 .badge-perigo { background: var(--color-danger-soft); color: var(--color-danger); }

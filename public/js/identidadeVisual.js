@@ -72,6 +72,55 @@ function tomSuave(hex) {
   return hslParaHex(h, Math.min(s * 0.5, 100), 95);
 }
 
+// Luminância relativa (fórmula do WCAG) — usada pra decidir se um texto claro ou
+// escuro rende mais contraste contra uma cor de fundo qualquer.
+function luminanciaRelativa(hex) {
+  const { r, g, b } = hexParaRgb(hex);
+  const canal = (v) => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b);
+}
+
+function razaoContraste(hexA, hexB) {
+  const lA = luminanciaRelativa(hexA);
+  const lB = luminanciaRelativa(hexB);
+  const [claro, escuro] = lA > lB ? [lA, lB] : [lB, lA];
+  return (claro + 0.05) / (escuro + 0.05);
+}
+
+// Decide o lado (claro ou escuro) que dá mais contraste contra o fundo, comparando
+// contra dois representantes já suavizados (nem #fff nem #000 puro).
+function ladoClaroParaTexto(corFundo) {
+  return razaoContraste(corFundo, '#eef0fa') >= razaoContraste(corFundo, '#20222c');
+}
+
+// Gera 3 tons de texto (forte/normal/suave) tingidos com o matiz do próprio fundo —
+// mantém a "leveza" acinzentada já usada no design (ex: nome vs texto comum vs "Sair"),
+// em vez de saltar pra preto/branco puro, e ainda assim garante contraste suficiente.
+function tonsDeTexto(corFundo) {
+  const { h, s } = rgbParaHsl(hexParaRgb(corFundo));
+  const satTexto = Math.min(s * 0.5, 35);
+  const claro = ladoClaroParaTexto(corFundo);
+  return claro
+    ? {
+        forte: hslParaHex(h, satTexto * 0.4, 98),
+        normal: hslParaHex(h, satTexto, 87),
+        suave: hslParaHex(h, satTexto, 74),
+      }
+    : {
+        forte: hslParaHex(h, satTexto * 0.4, 10),
+        normal: hslParaHex(h, satTexto, 22),
+        suave: hslParaHex(h, satTexto, 38),
+      };
+}
+
+// Texto de botão — só precisa de 1 tom (não tem hierarquia como o menu).
+function corDeTextoBotao(corFundo) {
+  return ladoClaroParaTexto(corFundo) ? '#f5f6fb' : '#1c1e27';
+}
+
 // Aplica uma cor configurada + suas variáveis derivadas, ou remove tudo (voltando ao
 // hardcoded do CSS) quando a cor é exatamente o padrão de fábrica — ver comentário de `PADRAO`.
 function aplicarOuResetar(root, campo, valor, todasVariaveis, calcularDerivadas) {
@@ -96,8 +145,16 @@ export function aplicarIdentidadeVisual(config) {
     }));
 
   aplicarOuResetar(root, 'cor_menu', config.cor_menu,
-    ['--color-menu-bg'],
-    (cor) => ({ '--color-menu-bg': cor }));
+    ['--color-menu-bg', '--color-menu-text-forte', '--color-menu-text', '--color-menu-text-suave'],
+    (cor) => {
+      const tons = tonsDeTexto(cor);
+      return {
+        '--color-menu-bg': cor,
+        '--color-menu-text-forte': tons.forte,
+        '--color-menu-text': tons.normal,
+        '--color-menu-text-suave': tons.suave,
+      };
+    });
 
   aplicarOuResetar(root, 'cor_login', config.cor_login,
     ['--color-login-bg', '--color-login-bg-mid', '--color-login-bg-2'],
@@ -108,8 +165,12 @@ export function aplicarIdentidadeVisual(config) {
     }));
 
   aplicarOuResetar(root, 'cor_botoes', config.cor_botoes,
-    ['--color-button', '--color-button-hover'],
-    (cor) => ({ '--color-button': cor, '--color-button-hover': escurecer(cor, 8) }));
+    ['--color-button', '--color-button-hover', '--color-button-text'],
+    (cor) => ({
+      '--color-button': cor,
+      '--color-button-hover': escurecer(cor, 8),
+      '--color-button-text': corDeTextoBotao(cor),
+    }));
 
   if (config.nome_biblioteca) {
     document.title = config.nome_biblioteca;

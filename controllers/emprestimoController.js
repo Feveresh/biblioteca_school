@@ -27,11 +27,12 @@ exports.listar = async (req, res) => {
   const { rows } = await pool.query(`
     SELECT
       e.id, e.aluno_id, e.livro_id,
-      a.nome AS aluno, a.turma,
+      a.nome AS aluno, t.nome AS turma,
       l.tombo, l.titulo AS livro,
       e.data_emprestimo, e.data_prevista, e.data_devolucao, e.status
     FROM emprestimos e
     JOIN alunos  a ON a.id = e.aluno_id
+    LEFT JOIN turmas t ON t.id = a.turma_id
     JOIN livros  l ON l.id = e.livro_id
     ${where}
     ORDER BY ${orderBy}
@@ -64,12 +65,13 @@ exports.pendentes = async (req, res) => {
   const { rows } = await pool.query(`
     SELECT
       e.id, e.aluno_id, e.livro_id,
-      a.nome AS aluno, a.turma,
+      a.nome AS aluno, t.nome AS turma,
       l.tombo, l.titulo AS livro,
       e.data_emprestimo, e.data_prevista,
       CASE WHEN CURRENT_DATE > e.data_prevista THEN 'atrasado' ELSE 'pendente' END AS status
     FROM emprestimos e
     JOIN alunos  a ON a.id = e.aluno_id
+    LEFT JOIN turmas t ON t.id = a.turma_id
     JOIN livros  l ON l.id = e.livro_id
     ${where}
     ORDER BY ${orderBy}

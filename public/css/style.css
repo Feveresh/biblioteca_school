@@ -349,6 +349,26 @@ input, select { font-family: inherit; }
   margin-bottom: 20px;
 }
 .painel h2 { font-size: 16px; margin: 0 0 16px; }
+.painel .sub { margin: -12px 0 16px; }
+
+/* ---------- Gráficos (Estatísticas) ---------- */
+.grid-graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.grafico-wrap { position: relative; height: 280px; }
+.grafico-wrap.alto { height: 340px; }
+.secao-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin: 32px 0 16px;
+}
+.secao-titulo:first-child { margin-top: 0; }
 
 /* ---------- Tabela ---------- */
 .tabela-wrap {

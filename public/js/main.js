@@ -4,6 +4,7 @@ import renderDashboard from './views/dashboard.js';
 import renderLivros from './views/livros.js';
 import renderAlunos from './views/alunos.js';
 import renderEmprestimos from './views/emprestimos.js';
+import renderEstatisticas from './views/estatisticas.js';
 import renderGestaoUsuarios from './views/gestaoUsuarios.js';
 import renderAuditoria from './views/auditoria.js';
 import renderConfiguracoes from './views/configuracoes.js';
@@ -21,6 +22,7 @@ const ROTAS = {
   '/livros': renderLivros,
   '/alunos': renderAlunos,
   '/emprestimos': renderEmprestimos,
+  '/estatisticas': renderEstatisticas,
   '/gestao-usuarios': renderGestaoUsuarios,
   '/auditoria': renderAuditoria,
   '/configuracoes': renderConfiguracoes,

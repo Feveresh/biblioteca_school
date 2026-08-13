@@ -21,6 +21,7 @@ app.use('/api/turmas',      autenticar, require('./routes/turmas'));
 app.use('/api/emprestimos', autenticar, require('./routes/emprestimos'));
 app.use('/api/emprestimos', autenticar, require('./routes/devolucoes'));
 app.use('/api/dashboard',   autenticar, require('./routes/dashboard'));
+app.use('/api/estatisticas', autenticar, require('./routes/estatisticas'));
 
 app.use('/api/permissoes',    autenticar, require('./routes/permissoes'));
 app.use('/api/papeis',        autenticar, autorizar('papeis.gerenciar'),   require('./routes/papeis'));

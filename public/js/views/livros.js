@@ -27,6 +27,7 @@ export default async function renderLivros(container) {
         <option value="false">Indisponíveis</option>
       </select>
       <select id="filtro-genero"><option value="">Gênero (todos)</option></select>
+      <select id="filtro-estante"><option value="">Localização (todas)</option></select>
     </div>
     <div class="tabela-wrap">
       <table>
@@ -46,6 +47,7 @@ export default async function renderLivros(container) {
   const inputBusca = container.querySelector('#busca-livro');
   const filtroDisponivel = container.querySelector('#filtro-disponivel');
   const filtroGenero = container.querySelector('#filtro-genero');
+  const filtroEstante = container.querySelector('#filtro-estante');
   const paginacaoEl = container.querySelector('#paginacao');
 
   let pagina = 1;
@@ -71,6 +73,12 @@ export default async function renderLivros(container) {
       + generos.map(g => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join('');
   }
 
+  async function carregarEstantes() {
+    const estantes = await api.get('/api/livros/estantes');
+    filtroEstante.innerHTML = '<option value="">Localização (todas)</option>'
+      + estantes.map(e => `<option value="${escapeHtml(e)}">Estante ${escapeHtml(e)}</option>`).join('');
+  }
+
   async function carregar() {
     tbody.innerHTML = `<tr><td colspan="7" class="celula-vazia">Carregando…</td></tr>`;
     const params = new URLSearchParams({ pagina, porPagina, ordenarPor, ordem });
@@ -78,6 +86,7 @@ export default async function renderLivros(container) {
     if (busca) params.set('busca', busca);
     if (filtroDisponivel.value) params.set('disponivel', filtroDisponivel.value);
     if (filtroGenero.value) params.set('genero_id', filtroGenero.value);
+    if (filtroEstante.value) params.set('estante', filtroEstante.value);
 
     const { dados: livros, total } = await api.get(`/api/livros?${params.toString()}`);
 
@@ -145,6 +154,10 @@ export default async function renderLivros(container) {
             <label for="f-ano">Ano de publicação <span class="sub">(opcional)</span></label>
             <input type="number" id="f-ano" min="1400" max="2100" value="${livro && livro.ano_publicacao ? livro.ano_publicacao : ''}">
           </div>
+          <div class="campo">
+            <label for="f-paginas">Páginas <span class="sub">(opcional)</span></label>
+            <input type="number" id="f-paginas" min="1" value="${livro && livro.paginas ? livro.paginas : ''}">
+          </div>
         </div>
         <div class="campo">
           <label for="f-genero">Gênero</label>
@@ -207,6 +220,7 @@ export default async function renderLivros(container) {
           autor: corpo.querySelector('#f-autor').value.trim() || null,
           editora: corpo.querySelector('#f-editora').value.trim() || null,
           ano_publicacao: corpo.querySelector('#f-ano').value ? Number(corpo.querySelector('#f-ano').value) : null,
+          paginas: corpo.querySelector('#f-paginas').value ? Number(corpo.querySelector('#f-paginas').value) : null,
           estante: corpo.querySelector('#f-estante').value.trim() || null,
           prateleira: corpo.querySelector('#f-prateleira').value.trim() || null,
           genero_id: generoId,
@@ -219,7 +233,7 @@ export default async function renderLivros(container) {
           mostrarToast('Livro cadastrado.', 'sucesso');
         }
         fecharModal();
-        await carregarGeneros();
+        await Promise.all([carregarGeneros(), carregarEstantes()]);
         carregar();
       } catch (err) {
         erroEl.textContent = err.message;
@@ -232,6 +246,7 @@ export default async function renderLivros(container) {
   inputBusca.addEventListener('input', debounce(() => { pagina = 1; carregar(); }, 350));
   filtroDisponivel.addEventListener('change', () => { pagina = 1; carregar(); });
   filtroGenero.addEventListener('change', () => { pagina = 1; carregar(); });
+  filtroEstante.addEventListener('change', () => { pagina = 1; carregar(); });
 
   container.querySelectorAll('[data-ordenar]').forEach(th => {
     th.addEventListener('click', () => {
@@ -280,6 +295,6 @@ export default async function renderLivros(container) {
     }
   });
 
-  await carregarGeneros();
+  await Promise.all([carregarGeneros(), carregarEstantes()]);
   await carregar();
 }

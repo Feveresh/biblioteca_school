@@ -6,6 +6,7 @@ const auditoria = require('../middleware/auditoria');
 const auditar = auditoria('livros');
 
 router.get('/',                    c.listar);
+router.get('/estantes',            c.estantes);
 router.get('/:id',                 c.buscar);
 router.post('/',                   autorizar('livros.criar'),   auditar, c.criar);
 router.put('/:id',                 autorizar('livros.editar'),  auditar, c.atualizar);

@@ -102,8 +102,17 @@ export default async function renderEstatisticas(container) {
       <div class="grid-graficos">
         <div class="painel">
           <h2>Livros por gênero</h2>
+          <div class="sub">Quantidade no acervo</div>
           <div class="grafico-wrap alto"><canvas id="g-genero"></canvas></div>
         </div>
+        <div class="painel">
+          <h2>Gêneros mais emprestados</h2>
+          <div class="sub">Por número de empréstimos</div>
+          <div class="grafico-wrap alto"><canvas id="g-genero-emprestado"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-graficos">
         <div class="painel">
           <h2>Livros mais emprestados</h2>
           <div class="grafico-wrap alto"><canvas id="g-top-livros"></canvas></div>
@@ -137,6 +146,16 @@ export default async function renderEstatisticas(container) {
           <div class="grafico-wrap alto"><canvas id="g-top-alunos"></canvas></div>
         </div>
       </div>
+
+      ${dados.topAlunosPorPaginas.length ? `
+        <div class="grid-graficos">
+          <div class="painel">
+            <h2>Alunos que mais leram</h2>
+            <div class="sub">Soma de páginas dos livros emprestados</div>
+            <div class="grafico-wrap alto"><canvas id="g-paginas-alunos"></canvas></div>
+          </div>
+        </div>
+      ` : ''}
     </div>
 
     <div class="aba-conteudo hidden" data-aba-conteudo="emprestimos">
@@ -216,6 +235,14 @@ export default async function renderEstatisticas(container) {
         },
         options: { ...opcoesEixo(cores), indexAxis: 'y' },
       });
+      criarGrafico('g-genero-emprestado', {
+        type: 'bar',
+        data: {
+          labels: dados.generosMaisEmprestados.map(g => g.genero),
+          datasets: [{ label: 'Empréstimos', data: dados.generosMaisEmprestados.map(g => g.total), backgroundColor: PALETA, borderRadius: 4 }],
+        },
+        options: { ...opcoesEixo(cores), indexAxis: 'y' },
+      });
       criarGrafico('g-top-livros', {
         type: 'bar',
         data: {
@@ -243,6 +270,16 @@ export default async function renderEstatisticas(container) {
         },
         options: { ...opcoesEixo(cores), indexAxis: 'y' },
       });
+      if (dados.topAlunosPorPaginas.length) {
+        criarGrafico('g-paginas-alunos', {
+          type: 'bar',
+          data: {
+            labels: dados.topAlunosPorPaginas.map(a => a.turma ? `${a.nome} (${a.turma})` : a.nome),
+            datasets: [{ label: 'Páginas', data: dados.topAlunosPorPaginas.map(a => a.paginas), backgroundColor: cores.aviso, borderRadius: 4 }],
+          },
+          options: { ...opcoesEixo(cores), indexAxis: 'y' },
+        });
+      }
     }
 
     if (aba === 'emprestimos') {

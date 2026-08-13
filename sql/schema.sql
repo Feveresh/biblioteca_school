@@ -83,6 +83,7 @@ CREATE TABLE livros (
   autor           VARCHAR(150),
   editora         VARCHAR(150),
   ano_publicacao  SMALLINT CHECK (ano_publicacao IS NULL OR ano_publicacao BETWEEN 1400 AND 2100),
+  paginas         SMALLINT CHECK (paginas IS NULL OR paginas > 0),
   estante         VARCHAR(30),
   prateleira      VARCHAR(30),
   genero_id       INT REFERENCES generos(id),
@@ -180,4 +181,5 @@ INSERT INTO schema_migrations (nome) VALUES
   ('008_renovacao_emprestimo.sql'),
   ('009_genero_livros.sql'),
   ('010_livro_editora_ano.sql'),
-  ('011_turma_catalogo.sql');
+  ('011_turma_catalogo.sql'),
+  ('012_livro_paginas.sql');

@@ -109,11 +109,33 @@ exports.resumo = async (req, res) => {
       FROM emprestimos
       WHERE status = 'devolvido' AND data_devolucao IS NOT NULL
     `),
+    // 11: gêneros mais emprestados (por nº de empréstimos, não de livros no acervo)
+    pool.query(`
+      SELECT COALESCE(g.nome, 'Sem gênero') AS genero, COUNT(*)::int AS total
+      FROM emprestimos e
+      JOIN livros l ON l.id = e.livro_id
+      LEFT JOIN generos g ON g.id = l.genero_id
+      GROUP BY g.nome
+      ORDER BY total DESC
+    `),
+    // 12: alunos que mais leram, por soma de páginas dos livros emprestados — só
+    // considera empréstimos de livros com número de páginas cadastrado
+    pool.query(`
+      SELECT a.nome, t.nome AS turma, SUM(l.paginas)::int AS paginas
+      FROM emprestimos e
+      JOIN alunos a ON a.id = e.aluno_id
+      JOIN livros l ON l.id = e.livro_id
+      LEFT JOIN turmas t ON t.id = a.turma_id
+      WHERE l.paginas IS NOT NULL
+      GROUP BY a.id, a.nome, t.nome
+      ORDER BY paginas DESC
+      LIMIT 10
+    `),
   ];
 
   if (podeVerAuditoria) {
     consultas.push(
-      // 12: ações mais frequentes no log de auditoria (últimos 30 dias)
+      // 13: ações mais frequentes no log de auditoria (últimos 30 dias)
       pool.query(`
         SELECT acao, COUNT(*)::int AS total
         FROM log_auditoria
@@ -122,7 +144,7 @@ exports.resumo = async (req, res) => {
         ORDER BY total DESC
         LIMIT 10
       `),
-      // 13: usuários mais ativos no sistema (últimos 30 dias)
+      // 14: usuários mais ativos no sistema (últimos 30 dias)
       pool.query(`
         SELECT u.nome, COUNT(*)::int AS total
         FROM log_auditoria la
@@ -140,6 +162,7 @@ exports.resumo = async (req, res) => {
     porMesRows, statusRow, topLivros, topAlunos, usoPorTurma,
     livrosPorGenero, disponibilidade, livrosParadosTotal, livrosParadosLista,
     alunosPorTurma, alunosSemEmprestimoRow, tempoMedioRow,
+    generosMaisEmprestados, topAlunosPorPaginas,
   ] = resultados;
 
   const mapaMeses = Object.fromEntries(porMesRows.rows.map(r => [r.mes, r.total]));
@@ -157,12 +180,14 @@ exports.resumo = async (req, res) => {
     alunosPorTurma: alunosPorTurma.rows,
     alunosSemEmprestimo: alunosSemEmprestimoRow.rows[0].total,
     tempoMedioDevolucaoDias: tempoMedioRow.rows[0].dias,
+    generosMaisEmprestados: generosMaisEmprestados.rows,
+    topAlunosPorPaginas: topAlunosPorPaginas.rows,
   };
 
   if (podeVerAuditoria) {
     resposta.auditoria = {
-      porAcao: resultados[12].rows,
-      porUsuario: resultados[13].rows,
+      porAcao: resultados[13].rows,
+      porUsuario: resultados[14].rows,
     };
   }
 

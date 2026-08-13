@@ -53,6 +53,15 @@ exports.listar = async (req, res) => {
   res.json({ dados: rows, total, pagina, porPagina });
 };
 
+// Valores distintos de estante já usados, pro filtro de localização na listagem —
+// não é um catálogo (sem tela de gerenciamento), só os valores livres já cadastrados.
+exports.estantes = async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT estante FROM livros WHERE estante IS NOT NULL AND estante <> '' ORDER BY estante`
+  );
+  res.json(rows.map(r => r.estante));
+};
+
 // Buscar livro por ID
 exports.buscar = async (req, res) => {
   const { rows } = await pool.query(`
@@ -67,43 +76,43 @@ exports.buscar = async (req, res) => {
 
 // Cadastrar livro
 exports.criar = async (req, res) => {
-  const { tombo, titulo, autor, editora, ano_publicacao, estante, prateleira, genero_id } = req.body;
+  const { tombo, titulo, autor, editora, ano_publicacao, paginas, estante, prateleira, genero_id } = req.body;
   if (!tombo || !titulo) {
     return res.status(400).json({ erro: 'Tombo e título são obrigatórios' });
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO livros (tombo, titulo, autor, editora, ano_publicacao, estante, prateleira, genero_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [tombo, titulo, autor, editora || null, ano_publicacao || null, estante || null, prateleira || null, genero_id || null]
+      `INSERT INTO livros (tombo, titulo, autor, editora, ano_publicacao, paginas, estante, prateleira, genero_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [tombo, titulo, autor, editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ erro: 'Tombo já cadastrado' });
     if (err.code === '23503') return res.status(400).json({ erro: 'Gênero informado não existe' });
-    if (err.code === '23514') return res.status(400).json({ erro: 'Ano de publicação inválido' });
+    if (err.code === '23514') return res.status(400).json({ erro: err.constraint === 'livros_paginas_check' ? 'Número de páginas inválido' : 'Ano de publicação inválido' });
     throw err;
   }
 };
 
 // Atualizar livro
 exports.atualizar = async (req, res) => {
-  const { tombo, titulo, autor, editora, ano_publicacao, estante, prateleira, genero_id } = req.body;
+  const { tombo, titulo, autor, editora, ano_publicacao, paginas, estante, prateleira, genero_id } = req.body;
   if (!tombo || !titulo) {
     return res.status(400).json({ erro: 'Tombo e título são obrigatórios' });
   }
   try {
     const { rows } = await pool.query(
       `UPDATE livros SET tombo=$1, titulo=$2, autor=$3, editora=$4, ano_publicacao=$5,
-                          estante=$6, prateleira=$7, genero_id=$8
-       WHERE id=$9 RETURNING *`,
-      [tombo, titulo, autor, editora || null, ano_publicacao || null, estante || null, prateleira || null, genero_id || null, req.params.id]
+                          paginas=$6, estante=$7, prateleira=$8, genero_id=$9
+       WHERE id=$10 RETURNING *`,
+      [tombo, titulo, autor, editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ erro: 'Livro não encontrado' });
     res.json(rows[0]);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ erro: 'Tombo já cadastrado' });
-    if (err.code === '23514') return res.status(400).json({ erro: 'Ano de publicação inválido' });
+    if (err.code === '23514') return res.status(400).json({ erro: err.constraint === 'livros_paginas_check' ? 'Número de páginas inválido' : 'Ano de publicação inválido' });
     if (err.code === '23503') return res.status(400).json({ erro: 'Gênero informado não existe' });
     throw err;
   }

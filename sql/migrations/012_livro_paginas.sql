@@ -1,0 +1,1 @@
+ALTER TABLE livros ADD COLUMN IF NOT EXISTS paginas SMALLINT CHECK (paginas IS NULL OR paginas > 0);

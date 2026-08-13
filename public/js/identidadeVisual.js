@@ -1,11 +1,16 @@
 const CACHE_KEY = 'biblioteca_identidade_visual';
 
-// Cor padrão de fábrica (mesma do :root em style.css). Quando a cor configurada é
-// exatamente essa, não mexemos nas CSS custom properties — os valores hardcoded do
-// CSS continuam valendo tal como são, sem depender da fórmula de derivação em JS
-// reproduzir os tons originais com precisão de pixel (ela é só uma aproximação boa
-// o bastante para cores escolhidas pelo usuário, não para preservar o padrão exato).
-const COR_PADRAO = '#4f46e5';
+// Cores padrão de fábrica (mesmas do :root em style.css). Quando a cor configurada é
+// exatamente uma dessas, não mexemos nas CSS custom properties correspondentes — os
+// valores hardcoded do CSS continuam valendo tal como são, sem depender da fórmula de
+// derivação em JS reproduzir os tons originais com precisão de pixel (ela é só uma
+// aproximação boa o bastante para cores escolhidas pelo usuário, não pro padrão exato).
+const PADRAO = {
+  cor_primaria: '#4f46e5',
+  cor_menu: '#1e1b4b',
+  cor_login: '#4f46e5',
+  cor_botoes: '#4f46e5',
+};
 
 function hexParaRgb(hex) {
   const limpo = hex.replace('#', '');
@@ -50,34 +55,61 @@ function hslParaHex(h, s, l) {
   return `#${paraHex(r)}${paraHex(g)}${paraHex(b)}`;
 }
 
-// Deriva os tons de hover/soft/light a partir da cor primária escolhida — mantém a UI de
-// configuração simples (uma cor só) sem perder a linguagem visual (hover mais escuro, etc).
-function derivarTons(corPrimaria) {
-  const { h, s, l } = rgbParaHsl(hexParaRgb(corPrimaria));
-  return {
-    hover: hslParaHex(h, s, Math.max(0, l - 8)),
-    soft: hslParaHex(h, Math.min(100, s * 0.5), 95),
-    light: hslParaHex(h, s, Math.min(100, l + 18)),
-  };
+function escurecer(hex, pontos) {
+  const { h, s, l } = rgbParaHsl(hexParaRgb(hex));
+  return hslParaHex(h, s, Math.max(0, l - pontos));
+}
+
+function clarear(hex, pontos) {
+  const { h, s, l } = rgbParaHsl(hexParaRgb(hex));
+  return hslParaHex(h, s, Math.min(100, l + pontos));
+}
+
+// Tom bem claro e dessaturado — usado como fundo suave (ex: anel de foco), não como
+// "clarear" comum: fixa a luminosidade em 95% em vez de somar aos pontos atuais.
+function tomSuave(hex) {
+  const { h, s } = rgbParaHsl(hexParaRgb(hex));
+  return hslParaHex(h, Math.min(s * 0.5, 100), 95);
+}
+
+// Aplica uma cor configurada + suas variáveis derivadas, ou remove tudo (voltando ao
+// hardcoded do CSS) quando a cor é exatamente o padrão de fábrica — ver comentário de `PADRAO`.
+function aplicarOuResetar(root, campo, valor, todasVariaveis, calcularDerivadas) {
+  if (!valor) return;
+  if (valor.toLowerCase() === PADRAO[campo]) {
+    todasVariaveis.forEach(v => root.removeProperty(v));
+    return;
+  }
+  Object.entries(calcularDerivadas(valor)).forEach(([variavel, cor]) => root.setProperty(variavel, cor));
 }
 
 export function aplicarIdentidadeVisual(config) {
   if (!config) return;
   const root = document.documentElement.style;
 
-  if (config.cor_primaria && config.cor_primaria.toLowerCase() !== COR_PADRAO) {
-    const { hover, soft, light } = derivarTons(config.cor_primaria);
-    root.setProperty('--color-primary', config.cor_primaria);
-    root.setProperty('--color-primary-hover', hover);
-    root.setProperty('--color-primary-soft', soft);
-    root.setProperty('--color-primary-light', light);
-  } else if (config.cor_primaria) {
-    // Volta explicitamente ao padrão do CSS (útil se uma cor customizada foi aplicada
-    // nesta mesma sessão — ex: prévia ao vivo na tela de Configurações — e o valor
-    // mudou de volta para o padrão antes de salvar).
-    ['--color-primary', '--color-primary-hover', '--color-primary-soft', '--color-primary-light']
-      .forEach(v => root.removeProperty(v));
-  }
+  aplicarOuResetar(root, 'cor_primaria', config.cor_primaria,
+    ['--color-primary', '--color-primary-hover', '--color-primary-soft'],
+    (cor) => ({
+      '--color-primary': cor,
+      '--color-primary-hover': escurecer(cor, 8),
+      '--color-primary-soft': tomSuave(cor),
+    }));
+
+  aplicarOuResetar(root, 'cor_menu', config.cor_menu,
+    ['--color-menu-bg'],
+    (cor) => ({ '--color-menu-bg': cor }));
+
+  aplicarOuResetar(root, 'cor_login', config.cor_login,
+    ['--color-login-bg', '--color-login-bg-mid', '--color-login-bg-2'],
+    (cor) => ({
+      '--color-login-bg': cor,
+      '--color-login-bg-mid': escurecer(cor, 8),
+      '--color-login-bg-2': clarear(cor, 18),
+    }));
+
+  aplicarOuResetar(root, 'cor_botoes', config.cor_botoes,
+    ['--color-button', '--color-button-hover'],
+    (cor) => ({ '--color-button': cor, '--color-button-hover': escurecer(cor, 8) }));
 
   if (config.nome_biblioteca) {
     document.title = config.nome_biblioteca;
@@ -86,7 +118,7 @@ export function aplicarIdentidadeVisual(config) {
 
   if (config.logo_data_url) {
     document.querySelectorAll('[data-logo-biblioteca]').forEach(el => {
-      el.innerHTML = `<img src="${config.logo_data_url}" alt="Logo" style="height:1em;vertical-align:-0.15em;">`;
+      el.innerHTML = `<img src="${config.logo_data_url}" alt="Logo" class="logo-imagem">`;
     });
   }
 }
@@ -96,6 +128,9 @@ export function atualizarCacheIdentidadeVisual(config) {
   localStorage.setItem(CACHE_KEY, JSON.stringify({
     nome_biblioteca: config.nome_biblioteca,
     cor_primaria: config.cor_primaria,
+    cor_menu: config.cor_menu,
+    cor_login: config.cor_login,
+    cor_botoes: config.cor_botoes,
     logo_data_url: config.logo_data_url,
   }));
 }

@@ -72,6 +72,7 @@ export default async function renderAlunos(container) {
           <td>${escapeHtml(a.nome)}</td>
           <td>${escapeHtml(a.turma || '—')}</td>
           <td class="tabela-acoes">
+            <a href="#/alunos/${a.id}" class="btn btn-secondary btn-sm">Histórico</a>
             <button class="btn btn-secondary btn-sm" data-editar="${a.id}">Editar</button>
             <button class="btn btn-danger btn-sm" data-excluir="${a.id}">Excluir</button>
           </td>

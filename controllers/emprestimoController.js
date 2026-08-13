@@ -138,3 +138,30 @@ exports.criar = async (req, res) => {
     client.release();
   }
 };
+
+// PATCH /api/emprestimos/:id/renovar — estende a data prevista pelo período padrão
+// configurado, contado a partir da data prevista atual (não de hoje) — sem limite de
+// quantas vezes, enquanto o empréstimo continuar pendente.
+exports.renovar = async (req, res) => {
+  const { id } = req.params;
+
+  const emprestimo = await pool.query('SELECT status FROM emprestimos WHERE id = $1', [id]);
+  if (!emprestimo.rows[0]) {
+    return res.status(404).json({ erro: 'Empréstimo não encontrado' });
+  }
+  if (emprestimo.rows[0].status === 'devolvido') {
+    return res.status(409).json({ erro: 'Livro já foi devolvido, não é possível renovar' });
+  }
+
+  const { rows: cfgRows } = await pool.query('SELECT dias_emprestimo_padrao FROM configuracoes WHERE id = 1');
+  const dias = cfgRows[0].dias_emprestimo_padrao;
+
+  const { rows } = await pool.query(
+    `UPDATE emprestimos
+     SET data_prevista = (data_prevista + ($1 || ' days')::interval)::date
+     WHERE id = $2 RETURNING *`,
+    [dias, id]
+  );
+  res.locals.auditAcao = 'renovar';
+  res.json(rows[0]);
+};

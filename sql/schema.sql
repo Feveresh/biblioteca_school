@@ -34,6 +34,7 @@ INSERT INTO permissoes (codigo, categoria, descricao) VALUES
   ('alunos.excluir',         'alunos',         'Excluir alunos'),
   ('emprestimos.criar',      'emprestimos',    'Registrar empréstimos'),
   ('emprestimos.devolver',   'emprestimos',    'Registrar devoluções'),
+  ('emprestimos.renovar',    'emprestimos',    'Renovar empréstimos'),
   ('usuarios.gerenciar',     'administracao',  'Gerenciar usuários do sistema'),
   ('papeis.gerenciar',       'administracao',  'Gerenciar papéis e permissões'),
   ('configuracoes.gerenciar','administracao',  'Alterar configurações da biblioteca'),
@@ -49,7 +50,7 @@ FROM permissoes
 WHERE codigo IN (
   'livros.criar', 'livros.editar', 'livros.excluir',
   'alunos.criar', 'alunos.editar', 'alunos.excluir',
-  'emprestimos.criar', 'emprestimos.devolver'
+  'emprestimos.criar', 'emprestimos.devolver', 'emprestimos.renovar'
 );
 
 -- ===== Usuários (acesso ao sistema) =====
@@ -100,6 +101,9 @@ CREATE TABLE configuracoes (
   id                        SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   nome_biblioteca           VARCHAR(150) NOT NULL DEFAULT 'Biblioteca Escolar',
   cor_primaria              VARCHAR(7)  NOT NULL DEFAULT '#4f46e5',
+  cor_menu                  VARCHAR(7)  NOT NULL DEFAULT '#1e1b4b',
+  cor_login                 VARCHAR(7)  NOT NULL DEFAULT '#4f46e5',
+  cor_botoes                VARCHAR(7)  NOT NULL DEFAULT '#4f46e5',
   logo_data_url             TEXT,
   dias_emprestimo_padrao    SMALLINT NOT NULL DEFAULT 7 CHECK (dias_emprestimo_padrao > 0),
   limite_livros_por_aluno   SMALLINT CHECK (limite_livros_por_aluno IS NULL OR limite_livros_por_aluno > 0),
@@ -152,4 +156,6 @@ INSERT INTO schema_migrations (nome) VALUES
   ('003_livros_localizacao.sql'),
   ('004_configuracoes.sql'),
   ('005_login_tentativas.sql'),
-  ('006_log_auditoria.sql');
+  ('006_log_auditoria.sql'),
+  ('007_identidade_visual_expandida.sql'),
+  ('008_renovacao_emprestimo.sql');

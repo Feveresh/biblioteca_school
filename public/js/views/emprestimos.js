@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escapeHtml, mostrarToast, formatarData, confirmar } from '../utils.js';
+import { escapeHtml, mostrarToast, formatarData, confirmar, exportarCSV } from '../utils.js';
 
 export default async function renderEmprestimos(container) {
   container.innerHTML = `
@@ -39,6 +39,7 @@ export default async function renderEmprestimos(container) {
       <input type="date" id="filtro-de" title="De">
       <input type="date" id="filtro-ate" title="Até">
       <button id="btn-limpar-filtros" class="btn btn-secondary btn-sm">Limpar filtros</button>
+      <button id="btn-exportar" class="btn btn-secondary btn-sm">⬇ Exportar CSV</button>
     </div>
 
     <div class="tabela-wrap">
@@ -131,7 +132,10 @@ export default async function renderEmprestimos(container) {
           <td>${formatarData(e.data_prevista)}</td>
           <td>${badgeStatus(e.status)}</td>
           <td class="tabela-acoes">
-            ${e.status !== 'devolvido' ? `<button class="btn btn-primary btn-sm" data-devolver="${e.id}">Devolver</button>` : ''}
+            ${e.status !== 'devolvido' ? `
+              <button class="btn btn-secondary btn-sm" data-renovar="${e.id}">Renovar</button>
+              <button class="btn btn-primary btn-sm" data-devolver="${e.id}">Devolver</button>
+            ` : ''}
           </td>
         </tr>
       `).join('');
@@ -148,6 +152,42 @@ export default async function renderEmprestimos(container) {
     paginacaoEl.querySelector('#btn-anterior').addEventListener('click', () => { pagina--; carregarTabela(); });
     paginacaoEl.querySelector('#btn-proxima').addEventListener('click', () => { pagina++; carregarTabela(); });
   }
+
+  const ROTULOS_STATUS = { pendente: 'Pendente', atrasado: 'Atrasado', devolvido: 'Devolvido' };
+
+  async function exportar() {
+    const params = new URLSearchParams({ porPagina: 500, ordenarPor, ordem });
+    if (filtroAluno.value) params.set('aluno_id', filtroAluno.value);
+    if (filtroDe.value) params.set('de', filtroDe.value);
+    if (filtroAte.value) params.set('ate', filtroAte.value);
+
+    const rota = modoAtual === 'historico' ? '/api/emprestimos' : '/api/emprestimos/pendentes';
+    const { dados } = await api.get(`${rota}?${params.toString()}`);
+
+    if (!dados.length) {
+      mostrarToast('Nada para exportar com os filtros atuais.', 'erro');
+      return;
+    }
+
+    exportarCSV(
+      `emprestimos-${modoAtual}-${new Date().toISOString().slice(0, 10)}.csv`,
+      [
+        { rotulo: 'Aluno', valor: e => e.aluno },
+        { rotulo: 'Turma', valor: e => e.turma || '' },
+        { rotulo: 'Livro', valor: e => e.livro },
+        { rotulo: 'Tombo', valor: e => e.tombo },
+        { rotulo: 'Emprestado em', valor: e => formatarData(e.data_emprestimo) },
+        { rotulo: 'Previsto', valor: e => formatarData(e.data_prevista) },
+        { rotulo: 'Devolvido em', valor: e => formatarData(e.data_devolucao) },
+        { rotulo: 'Status', valor: e => ROTULOS_STATUS[e.status] || e.status },
+      ],
+      dados
+    );
+  }
+
+  container.querySelector('#btn-exportar').addEventListener('click', () => {
+    exportar().catch(err => mostrarToast(err.message, 'erro'));
+  });
 
   async function alternarModo(modo) {
     modoAtual = modo;
@@ -204,19 +244,36 @@ export default async function renderEmprestimos(container) {
   });
 
   tbody.addEventListener('click', async (e) => {
-    const id = e.target.dataset.devolver;
-    if (!id) return;
-    const ok = await confirmar('Confirmar devolução deste livro?', {
-      titulo: 'Registrar devolução', textoConfirmar: 'Devolver',
-    });
-    if (!ok) return;
-    try {
-      await api.patch(`/api/emprestimos/${id}/devolver`);
-      mostrarToast('Devolução registrada.', 'sucesso');
-      await carregarSelects();
-      await carregarTabela();
-    } catch (err) {
-      mostrarToast(err.message, 'erro');
+    const idDevolver = e.target.dataset.devolver;
+    const idRenovar = e.target.dataset.renovar;
+
+    if (idDevolver) {
+      const ok = await confirmar('Confirmar devolução deste livro?', {
+        titulo: 'Registrar devolução', textoConfirmar: 'Devolver',
+      });
+      if (!ok) return;
+      try {
+        await api.patch(`/api/emprestimos/${idDevolver}/devolver`);
+        mostrarToast('Devolução registrada.', 'sucesso');
+        await carregarSelects();
+        await carregarTabela();
+      } catch (err) {
+        mostrarToast(err.message, 'erro');
+      }
+    }
+
+    if (idRenovar) {
+      const ok = await confirmar(`Estender o prazo em ${diasPadrao} dia(s) a partir da data prevista atual?`, {
+        titulo: 'Renovar empréstimo', textoConfirmar: 'Renovar',
+      });
+      if (!ok) return;
+      try {
+        await api.patch(`/api/emprestimos/${idRenovar}/renovar`);
+        mostrarToast('Empréstimo renovado.', 'sucesso');
+        await carregarTabela();
+      } catch (err) {
+        mostrarToast(err.message, 'erro');
+      }
     }
   });
 

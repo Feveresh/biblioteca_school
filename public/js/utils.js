@@ -18,6 +18,32 @@ export function debounce(fn, atraso = 300) {
   };
 }
 
+// Gera um CSV a partir de linhas de objetos e dispara o download no navegador —
+// sem endpoint no backend: os dados já estão na tela (ou são buscados sem paginação
+// antes de chamar isto), então gerar o arquivo no cliente evita ida e volta ao servidor.
+export function exportarCSV(nomeArquivo, colunas, linhas) {
+  const escaparCampo = (valor) => {
+    const texto = String(valor ?? '');
+    return /[",\n;]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
+  };
+  const cabecalho = colunas.map(c => escaparCampo(c.rotulo)).join(';');
+  const corpo = linhas.map(linha => colunas.map(c => escaparCampo(c.valor(linha))).join(';')).join('\n');
+  // BOM UTF-8 no início — sem isso o Excel abre acentos quebrados em CSV. Usa o escape
+  // ﻿ (não um caractere literal) porque um BOM literal no arquivo-fonte vira
+  // metadado de encoding do próprio arquivo .js em vez de virar conteúdo real da string.
+  const conteudo = '﻿' + cabecalho + '\n' + corpo;
+
+  const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function mostrarToast(mensagem, tipo = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');

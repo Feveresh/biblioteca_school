@@ -4,10 +4,10 @@ import renderDashboard from './views/dashboard.js';
 import renderLivros from './views/livros.js';
 import renderAlunos from './views/alunos.js';
 import renderEmprestimos from './views/emprestimos.js';
-import renderUsuarios from './views/usuarios.js';
-import renderPapeis from './views/papeis.js';
+import renderGestaoUsuarios from './views/gestaoUsuarios.js';
 import renderAuditoria from './views/auditoria.js';
 import renderConfiguracoes from './views/configuracoes.js';
+import renderAlunoDetalhe from './views/alunoDetalhe.js';
 import { carregarIdentidadeVisual } from './identidadeVisual.js';
 
 const telaLogin = document.getElementById('tela-login');
@@ -21,15 +21,44 @@ const ROTAS = {
   '/livros': renderLivros,
   '/alunos': renderAlunos,
   '/emprestimos': renderEmprestimos,
-  '/usuarios': renderUsuarios,
-  '/papeis': renderPapeis,
+  '/gestao-usuarios': renderGestaoUsuarios,
   '/auditoria': renderAuditoria,
   '/configuracoes': renderConfiguracoes,
 };
 
+// Rotas com parâmetro (ex: /alunos/42) — o roteador é um lookup simples por objeto,
+// então essas poucas rotas dinâmicas são resolvidas à parte, por padrão regex.
+const ROTAS_DINAMICAS = [
+  { padrao: /^\/alunos\/(\d+)$/, render: renderAlunoDetalhe, rotaNav: '/alunos' },
+];
+
+// `codigo` pode ser uma lista separada por vírgula (ex: "usuarios.gerenciar,papeis.gerenciar")
+// — nesse caso basta ter QUALQUER uma delas (usado pelo link combinado "Gestão de Usuários").
 function temPermissao(usuario, codigo) {
-  return usuario.papel?.acessoTotal || usuario.permissoes?.includes(codigo);
+  if (usuario.papel?.acessoTotal) return true;
+  return codigo.split(',').some(c => usuario.permissoes?.includes(c));
 }
+
+const TEMA_KEY = 'biblioteca_tema';
+const btnTema = document.getElementById('btn-tema');
+
+function temaAtual() {
+  return document.documentElement.getAttribute('data-theme')
+    || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}
+
+function atualizarIconeTema() {
+  btnTema.textContent = temaAtual() === 'dark' ? '☀️' : '🌙';
+}
+
+btnTema.addEventListener('click', () => {
+  const novoTema = temaAtual() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', novoTema);
+  localStorage.setItem(TEMA_KEY, novoTema);
+  atualizarIconeTema();
+});
+
+atualizarIconeTema();
 
 function mostrarApp() {
   telaLogin.classList.add('hidden');
@@ -53,15 +82,31 @@ function mostrarLogin() {
 
 async function rotear() {
   const caminho = location.hash.slice(1) || '/';
-  const render = ROTAS[caminho] || renderDashboard;
+
+  let render = ROTAS[caminho];
+  let params = {};
+  let rotaNav = caminho;
+
+  if (!render) {
+    for (const rota of ROTAS_DINAMICAS) {
+      const match = caminho.match(rota.padrao);
+      if (match) {
+        render = rota.render;
+        params = { id: match[1] };
+        rotaNav = rota.rotaNav;
+        break;
+      }
+    }
+  }
+  render = render || renderDashboard;
 
   document.querySelectorAll('.nav-link').forEach(link => {
-    link.classList.toggle('ativo', link.dataset.rota === caminho);
+    link.classList.toggle('ativo', link.dataset.rota === rotaNav);
   });
 
   viewEl.innerHTML = '<p style="color:var(--color-text-muted)">Carregando…</p>';
   try {
-    await render(viewEl);
+    await render(viewEl, params);
   } catch (err) {
     viewEl.innerHTML = `<p class="mensagem-erro">Não foi possível carregar esta página: ${err.message}</p>`;
   }

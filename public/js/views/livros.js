@@ -1,11 +1,21 @@
 import { api } from '../api.js';
-import { escapeHtml, mostrarToast, abrirModal, fecharModal, confirmar, debounce } from '../utils.js';
+import { escapeHtml, mostrarToast, abrirModal, fecharModal, confirmar, debounce, imprimirTabela } from '../utils.js';
 
 const COLUNAS = [
   { chave: 'tombo', rotulo: 'Tombo' },
   { chave: 'titulo', rotulo: 'Título' },
   { chave: 'autor', rotulo: 'Autor' },
   { chave: 'genero', rotulo: 'Gênero' },
+];
+
+const COLUNAS_IMPRESSAO = [
+  { rotulo: 'Tombo', valor: l => l.tombo },
+  { rotulo: 'Título', valor: l => l.titulo },
+  { rotulo: 'Autor', valor: l => l.autor || '' },
+  { rotulo: 'Gênero', valor: l => l.genero_nome || '' },
+  { rotulo: 'Páginas', valor: l => l.paginas ?? '' },
+  { rotulo: 'Localização', valor: l => [l.estante, l.prateleira].filter(Boolean).join(' / ') },
+  { rotulo: 'Status', valor: l => l.disponivel ? 'Disponível' : 'Indisponível' },
 ];
 
 const NOVO_GENERO = '__novo__';
@@ -28,13 +38,14 @@ export default async function renderLivros(container) {
       </select>
       <select id="filtro-genero"><option value="">Gênero (todos)</option></select>
       <select id="filtro-estante"><option value="">Localização (todas)</option></select>
+      <button id="btn-imprimir" class="btn btn-secondary btn-sm">🖨️ Imprimir</button>
     </div>
     <div class="tabela-wrap">
       <table>
         <thead>
           <tr>
             ${COLUNAS.map(c => `<th data-ordenar="${c.chave}" style="cursor:pointer;user-select:none;">${c.rotulo} <span class="seta-ordenacao" data-seta="${c.chave}"></span></th>`).join('')}
-            <th>Localização</th><th>Status</th><th></th>
+            <th>Páginas</th><th>Localização</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody id="tbody-livros"></tbody>
@@ -79,19 +90,26 @@ export default async function renderLivros(container) {
       + estantes.map(e => `<option value="${escapeHtml(e)}">Estante ${escapeHtml(e)}</option>`).join('');
   }
 
-  async function carregar() {
-    tbody.innerHTML = `<tr><td colspan="7" class="celula-vazia">Carregando…</td></tr>`;
-    const params = new URLSearchParams({ pagina, porPagina, ordenarPor, ordem });
+  function construirParams() {
+    const params = new URLSearchParams({ ordenarPor, ordem });
     const busca = inputBusca.value.trim();
     if (busca) params.set('busca', busca);
     if (filtroDisponivel.value) params.set('disponivel', filtroDisponivel.value);
     if (filtroGenero.value) params.set('genero_id', filtroGenero.value);
     if (filtroEstante.value) params.set('estante', filtroEstante.value);
+    return params;
+  }
+
+  async function carregar() {
+    tbody.innerHTML = `<tr><td colspan="8" class="celula-vazia">Carregando…</td></tr>`;
+    const params = construirParams();
+    params.set('pagina', pagina);
+    params.set('porPagina', porPagina);
 
     const { dados: livros, total } = await api.get(`/api/livros?${params.toString()}`);
 
     if (!livros.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="celula-vazia">Nenhum livro encontrado.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="celula-vazia">Nenhum livro encontrado.</td></tr>`;
     } else {
       tbody.innerHTML = livros.map(l => `
         <tr>
@@ -99,6 +117,7 @@ export default async function renderLivros(container) {
           <td>${escapeHtml(l.titulo)}</td>
           <td>${escapeHtml(l.autor || '—')}</td>
           <td>${escapeHtml(l.genero_nome || '—')}</td>
+          <td>${l.paginas ?? '—'}</td>
           <td>${escapeHtml(localizacao(l))}</td>
           <td>
             <button type="button" class="badge badge-clicavel ${l.disponivel ? 'badge-sucesso' : 'badge-perigo'}" data-alternar-disponibilidade="${l.id}" title="Clique para alternar manualmente">
@@ -241,6 +260,14 @@ export default async function renderLivros(container) {
       }
     });
   }
+
+  container.querySelector('#btn-imprimir').addEventListener('click', async () => {
+    const params = construirParams();
+    params.set('pagina', 1);
+    params.set('porPagina', 500);
+    const { dados } = await api.get(`/api/livros?${params.toString()}`);
+    imprimirTabela('Livros', COLUNAS_IMPRESSAO, dados);
+  });
 
   container.querySelector('#btn-novo-livro').addEventListener('click', () => abrirFormulario(null));
   inputBusca.addEventListener('input', debounce(() => { pagina = 1; carregar(); }, 350));

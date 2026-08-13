@@ -4,11 +4,13 @@ const app = express();
 
 const autenticar = require('./middleware/auth');
 const { autorizar } = require('./middleware/permissao');
+const somenteLocal = require('./middleware/somenteLocal');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
 // limite maior que o padrão (100kb) para acomodar o logo em base64 (~150KB) no payload de configurações
 app.use(express.json({ limit: '1mb' }));
+app.use(somenteLocal);
 app.use(express.static('public'));
 
 app.use('/api/auth', require('./routes/auth'));
@@ -32,7 +34,13 @@ app.use('/api/configuracoes', autenticar, require('./routes/configuracoes'));
 app.use('/api', notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3303;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
 });
+
+// Mantém a versão exibida no menu sempre igual à do código rodando de fato — atualiza a
+// cada início do servidor (dev ou o serviço instalado), não só durante a instalação.
+require('./config/db')
+  .query('UPDATE configuracoes SET versao_sistema = $1 WHERE id = 1', [require('./package.json').version])
+  .catch(err => console.error('⚠️  Não consegui atualizar a versão do sistema:', err.message));

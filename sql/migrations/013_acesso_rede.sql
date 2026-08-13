@@ -1,0 +1,1 @@
+ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS permitir_acesso_rede BOOLEAN NOT NULL DEFAULT FALSE;

@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escapeHtml, mostrarToast, formatarData, confirmar, exportarCSV } from '../utils.js';
+import { escapeHtml, mostrarToast, formatarData, confirmar, exportarCSV, imprimirTabela } from '../utils.js';
 
 export default async function renderEmprestimos(container) {
   container.innerHTML = `
@@ -40,6 +40,7 @@ export default async function renderEmprestimos(container) {
       <input type="date" id="filtro-ate" title="Até">
       <button id="btn-limpar-filtros" class="btn btn-secondary btn-sm">Limpar filtros</button>
       <button id="btn-exportar" class="btn btn-secondary btn-sm">⬇ Exportar CSV</button>
+      <button id="btn-imprimir" class="btn btn-secondary btn-sm">🖨️ Imprimir</button>
     </div>
 
     <div class="tabela-wrap">
@@ -155,7 +156,18 @@ export default async function renderEmprestimos(container) {
 
   const ROTULOS_STATUS = { pendente: 'Pendente', atrasado: 'Atrasado', devolvido: 'Devolvido' };
 
-  async function exportar() {
+  const COLUNAS_EXPORTACAO = [
+    { rotulo: 'Aluno', valor: e => e.aluno },
+    { rotulo: 'Turma', valor: e => e.turma || '' },
+    { rotulo: 'Livro', valor: e => e.livro },
+    { rotulo: 'Tombo', valor: e => e.tombo },
+    { rotulo: 'Emprestado em', valor: e => formatarData(e.data_emprestimo) },
+    { rotulo: 'Previsto', valor: e => formatarData(e.data_prevista) },
+    { rotulo: 'Devolvido em', valor: e => formatarData(e.data_devolucao) },
+    { rotulo: 'Status', valor: e => ROTULOS_STATUS[e.status] || e.status },
+  ];
+
+  async function buscarTudoFiltrado() {
     const params = new URLSearchParams({ porPagina: 500, ordenarPor, ordem });
     if (filtroAluno.value) params.set('aluno_id', filtroAluno.value);
     if (filtroDe.value) params.set('de', filtroDe.value);
@@ -163,30 +175,25 @@ export default async function renderEmprestimos(container) {
 
     const rota = modoAtual === 'historico' ? '/api/emprestimos' : '/api/emprestimos/pendentes';
     const { dados } = await api.get(`${rota}?${params.toString()}`);
+    return dados;
+  }
 
+  async function exportar() {
+    const dados = await buscarTudoFiltrado();
     if (!dados.length) {
       mostrarToast('Nada para exportar com os filtros atuais.', 'erro');
       return;
     }
-
-    exportarCSV(
-      `emprestimos-${modoAtual}-${new Date().toISOString().slice(0, 10)}.csv`,
-      [
-        { rotulo: 'Aluno', valor: e => e.aluno },
-        { rotulo: 'Turma', valor: e => e.turma || '' },
-        { rotulo: 'Livro', valor: e => e.livro },
-        { rotulo: 'Tombo', valor: e => e.tombo },
-        { rotulo: 'Emprestado em', valor: e => formatarData(e.data_emprestimo) },
-        { rotulo: 'Previsto', valor: e => formatarData(e.data_prevista) },
-        { rotulo: 'Devolvido em', valor: e => formatarData(e.data_devolucao) },
-        { rotulo: 'Status', valor: e => ROTULOS_STATUS[e.status] || e.status },
-      ],
-      dados
-    );
+    exportarCSV(`emprestimos-${modoAtual}-${new Date().toISOString().slice(0, 10)}.csv`, COLUNAS_EXPORTACAO, dados);
   }
 
   container.querySelector('#btn-exportar').addEventListener('click', () => {
     exportar().catch(err => mostrarToast(err.message, 'erro'));
+  });
+
+  container.querySelector('#btn-imprimir').addEventListener('click', async () => {
+    const dados = await buscarTudoFiltrado();
+    imprimirTabela('Empréstimos', COLUNAS_EXPORTACAO, dados, modoAtual === 'historico' ? 'Histórico completo' : 'Pendentes');
   });
 
   async function alternarModo(modo) {

@@ -51,11 +51,15 @@ async function seed() {
     console.log(`✅ ${LIVROS.length} livros de exemplo garantidos.`);
 
     for (const aluno of ALUNOS) {
+      const { rows: turmaRows } = await client.query(
+        `INSERT INTO turmas (nome) VALUES ($1) ON CONFLICT (nome) DO UPDATE SET nome = EXCLUDED.nome RETURNING id`,
+        [aluno.turma]
+      );
       const existe = await client.query(
-        'SELECT id FROM alunos WHERE nome = $1 AND turma = $2', [aluno.nome, aluno.turma]
+        'SELECT id FROM alunos WHERE nome = $1 AND turma_id = $2', [aluno.nome, turmaRows[0].id]
       );
       if (!existe.rows[0]) {
-        await client.query('INSERT INTO alunos (nome, turma) VALUES ($1, $2)', [aluno.nome, aluno.turma]);
+        await client.query('INSERT INTO alunos (nome, turma_id) VALUES ($1, $2)', [aluno.nome, turmaRows[0].id]);
       }
     }
     console.log(`✅ ${ALUNOS.length} alunos de exemplo garantidos.`);

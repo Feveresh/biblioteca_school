@@ -1,3 +1,6 @@
 node_modules/
 .env
 backups/
+installer/.cache/
+installer/dist/
+installer/Output/

@@ -44,6 +44,93 @@ export function exportarCSV(nomeArquivo, colunas, linhas) {
   URL.revokeObjectURL(url);
 }
 
+// Imprime uma tabela (mesma forma de "colunas" do exportarCSV: { rotulo, valor(linha) })
+// numa aba nova e isolada — evita ter que esconder a barra lateral/filtros/botões da SPA
+// com CSS de impressão, e dá controle total do layout impresso.
+export function imprimirTabela(titulo, colunas, linhas, subtitulo = '') {
+  const janela = window.open('', '_blank');
+  if (!janela) {
+    mostrarToast('O navegador bloqueou a janela de impressão. Permita pop-ups pra este site.', 'erro');
+    return;
+  }
+
+  const linhasHtml = linhas.map(linha => `
+    <tr>${colunas.map(c => `<td>${escapeHtml(c.valor(linha))}</td>`).join('')}</tr>
+  `).join('');
+
+  janela.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>${escapeHtml(titulo)}</title>
+      <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 24px; color: #1e2130; }
+        h1 { font-size: 18px; margin: 0 0 4px; }
+        .sub { font-size: 12px; color: #6b7280; margin: 0 0 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #ddd; font-size: 12px; }
+        th { background: #f4f6fb; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(titulo)}</h1>
+      <div class="sub">${subtitulo ? escapeHtml(subtitulo) + ' — ' : ''}${linhas.length} registro(s) — gerado em ${new Date().toLocaleString('pt-BR')}</div>
+      <table>
+        <thead><tr>${colunas.map(c => `<th>${escapeHtml(c.rotulo)}</th>`).join('')}</tr></thead>
+        <tbody>${linhasHtml}</tbody>
+      </table>
+    </body>
+    </html>
+  `);
+  janela.document.close();
+  janela.onload = () => janela.print();
+}
+
+// Imprime imagens (ex: gráficos capturados de <canvas> via toDataURL) numa aba nova,
+// uma por linha, com título.
+export function imprimirImagens(titulo, imagens, subtitulo = '') {
+  const janela = window.open('', '_blank');
+  if (!janela) {
+    mostrarToast('O navegador bloqueou a janela de impressão. Permita pop-ups pra este site.', 'erro');
+    return;
+  }
+
+  const imagensHtml = imagens.map(img => `
+    <div class="grafico">
+      <h2>${escapeHtml(img.titulo)}</h2>
+      <img src="${img.dataUrl}" alt="${escapeHtml(img.titulo)}">
+    </div>
+  `).join('');
+
+  janela.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>${escapeHtml(titulo)}</title>
+      <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 24px; color: #1e2130; }
+        h1 { font-size: 18px; margin: 0 0 4px; }
+        .sub { font-size: 12px; color: #6b7280; margin: 0 0 24px; }
+        .grafico { margin-bottom: 28px; page-break-inside: avoid; }
+        .grafico h2 { font-size: 14px; margin: 0 0 8px; }
+        .grafico img { max-width: 100%; border: 1px solid #ddd; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(titulo)}</h1>
+      <div class="sub">${subtitulo ? escapeHtml(subtitulo) + ' — ' : ''}gerado em ${new Date().toLocaleString('pt-BR')}</div>
+      ${imagensHtml}
+    </body>
+    </html>
+  `);
+  janela.document.close();
+  janela.onload = () => janela.print();
+}
+
 export function mostrarToast(mensagem, tipo = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');

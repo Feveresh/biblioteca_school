@@ -250,6 +250,13 @@ input, select { font-family: inherit; }
 .link-sair { background: none; border: none; padding: 0; color: var(--color-menu-text-suave); font-size: 12px; text-decoration: underline; }
 .link-sair:hover { color: var(--color-menu-text-forte); }
 
+.sidebar-versao {
+  padding: 8px 20px 14px;
+  font-size: 11px;
+  color: var(--color-menu-text-suave);
+  text-align: center;
+}
+
 .conteudo {
   margin-left: var(--sidebar-w);
   flex: 1;

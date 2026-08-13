@@ -1,5 +1,5 @@
 import { api, getUsuario } from '../api.js';
-import { mostrarToast, escapeHtml } from '../utils.js';
+import { mostrarToast, escapeHtml, debounce } from '../utils.js';
 import { aplicarIdentidadeVisual, atualizarCacheIdentidadeVisual } from '../identidadeVisual.js';
 import { temaAtual, alternarTema } from '../tema.js';
 
@@ -50,7 +50,7 @@ export default async function renderConfiguracoes(container) {
       ${ABAS.map((a, i) => `<button type="button" class="aba-btn ${i === 0 ? 'ativa' : ''}" data-aba="${a.id}">${a.rotulo}</button>`).join('')}
     </div>
 
-    <form id="form-configuracoes">
+    <div id="form-configuracoes">
       <div class="aba-conteudo" data-aba-conteudo="geral">
         <div class="painel">
           <div class="form-linha">
@@ -119,14 +119,33 @@ export default async function renderConfiguracoes(container) {
             </div>
           </div>
         </div>
+
+        <div class="painel">
+          <h2>Acesso pela rede</h2>
+          <p class="sub" style="margin:0 0 14px;">Por padrão, o sistema só pode ser acessado por este computador. Ativando, outros computadores da mesma rede da escola também conseguem acessar pelo navegador.</p>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
+            <input type="checkbox" id="f-acesso-rede" ${config.permitir_acesso_rede ? 'checked' : ''} ${desabilitado}>
+            Permitir acesso pela rede
+          </label>
+          <div class="form-linha" style="margin-top:16px;">
+            <div class="campo">
+              <label>Este computador</label>
+              <input value="${escapeHtml(config.enderecos.local)}" readonly>
+            </div>
+            <div class="campo">
+              <label>Outros computadores da rede</label>
+              <input value="${config.enderecos.rede ? escapeHtml(config.enderecos.rede) : 'Rede não detectada'}" readonly>
+            </div>
+          </div>
+        </div>
       </div>
 
       <p id="config-erro" class="mensagem-erro hidden"></p>
-      ${podeEditar ? '<button type="submit" class="btn btn-primary">Salvar configurações</button>' : ''}
-    </form>
+      ${podeEditar ? '<p class="sub" id="config-status" style="min-height:16px;"></p>' : ''}
+    </div>
   `;
 
-  // Abas — só alternam visibilidade, é tudo o mesmo <form> (um único "Salvar" pro conjunto todo)
+  // Abas — só alternam visibilidade, os campos de todas continuam no mesmo salvamento automático
   container.querySelectorAll('.aba-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       container.querySelectorAll('.aba-btn').forEach(b => b.classList.toggle('ativa', b === btn));
@@ -147,6 +166,49 @@ export default async function renderConfiguracoes(container) {
   if (!podeEditar) return;
 
   let logoAtual = config.logo_data_url;
+  const erroEl = container.querySelector('#config-erro');
+  const statusEl = container.querySelector('#config-status');
+
+  // Salva tudo junto (o backend espera o registro completo) sempre que algum campo muda —
+  // sem botão de salvar. Campos de texto/número usam debounce pra não disparar uma
+  // requisição a cada tecla; checkbox, cor, arquivo e "remover logo" salvam na hora,
+  // já que são escolhas discretas, não digitação contínua.
+  async function salvar() {
+    erroEl.classList.add('hidden');
+
+    const nome = container.querySelector('#f-nome').value.trim();
+    if (!nome) {
+      erroEl.textContent = 'O nome da biblioteca não pode ficar em branco.';
+      erroEl.classList.remove('hidden');
+      return;
+    }
+
+    const dados = {
+      nome_biblioteca: nome,
+      logo_data_url: logoAtual,
+      dias_emprestimo_padrao: Number(container.querySelector('#f-dias').value),
+      limite_livros_por_aluno: container.querySelector('#f-limite').value
+        ? Number(container.querySelector('#f-limite').value) : null,
+      login_max_tentativas: Number(container.querySelector('#f-max-tentativas').value),
+      login_bloqueio_minutos: Number(container.querySelector('#f-bloqueio').value),
+      auditoria_retencao_dias: Number(container.querySelector('#f-retencao').value),
+      permitir_acesso_rede: container.querySelector('#f-acesso-rede').checked,
+    };
+    CORES.forEach(c => { dados[c.campo] = container.querySelector(`#${c.id}`).value; });
+
+    try {
+      const atualizado = await api.put('/api/configuracoes', dados);
+      aplicarIdentidadeVisual(atualizado);
+      atualizarCacheIdentidadeVisual(atualizado);
+      statusEl.textContent = '✓ Salvo';
+      setTimeout(() => { if (statusEl.textContent === '✓ Salvo') statusEl.textContent = ''; }, 2000);
+    } catch (err) {
+      erroEl.textContent = err.message;
+      erroEl.classList.remove('hidden');
+    }
+  }
+
+  const salvarComDebounce = debounce(salvar, 700);
 
   container.querySelector('#f-logo').addEventListener('change', async (e) => {
     const arquivo = e.target.files[0];
@@ -163,6 +225,7 @@ export default async function renderConfiguracoes(container) {
     }
     logoAtual = await lerArquivoComoDataUrl(arquivo);
     container.querySelector('#logo-preview').innerHTML = `<img src="${logoAtual}" alt="Prévia" style="max-height:88px;">`;
+    salvar();
   });
 
   const btnRemoverLogo = container.querySelector('#btn-remover-logo');
@@ -171,40 +234,20 @@ export default async function renderConfiguracoes(container) {
       logoAtual = null;
       container.querySelector('#logo-preview').innerHTML = '<span class="sub">Sem logo</span>';
       container.querySelector('#f-logo').value = '';
+      salvar();
     });
   }
 
   CORES.forEach(c => {
     container.querySelector(`#${c.id}`).addEventListener('input', (e) => {
       aplicarIdentidadeVisual({ [c.campo]: e.target.value });
+      salvarComDebounce();
     });
   });
 
-  container.querySelector('#form-configuracoes').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const erroEl = container.querySelector('#config-erro');
-    erroEl.classList.add('hidden');
-
-    const dados = {
-      nome_biblioteca: container.querySelector('#f-nome').value.trim(),
-      logo_data_url: logoAtual,
-      dias_emprestimo_padrao: Number(container.querySelector('#f-dias').value),
-      limite_livros_por_aluno: container.querySelector('#f-limite').value
-        ? Number(container.querySelector('#f-limite').value) : null,
-      login_max_tentativas: Number(container.querySelector('#f-max-tentativas').value),
-      login_bloqueio_minutos: Number(container.querySelector('#f-bloqueio').value),
-      auditoria_retencao_dias: Number(container.querySelector('#f-retencao').value),
-    };
-    CORES.forEach(c => { dados[c.campo] = container.querySelector(`#${c.id}`).value; });
-
-    try {
-      const atualizado = await api.put('/api/configuracoes', dados);
-      mostrarToast('Configurações salvas.', 'sucesso');
-      aplicarIdentidadeVisual(atualizado);
-      atualizarCacheIdentidadeVisual(atualizado);
-    } catch (err) {
-      erroEl.textContent = err.message;
-      erroEl.classList.remove('hidden');
-    }
+  ['#f-nome', '#f-dias', '#f-limite', '#f-max-tentativas', '#f-bloqueio', '#f-retencao'].forEach(seletor => {
+    container.querySelector(seletor).addEventListener('input', salvarComDebounce);
   });
+
+  container.querySelector('#f-acesso-rede').addEventListener('change', salvar);
 }

@@ -1,9 +1,14 @@
 import { api } from '../api.js';
-import { escapeHtml, mostrarToast, abrirModal, fecharModal, confirmar, debounce } from '../utils.js';
+import { escapeHtml, mostrarToast, abrirModal, fecharModal, confirmar, debounce, imprimirTabela } from '../utils.js';
 
 const COLUNAS = [
   { chave: 'nome', rotulo: 'Nome' },
   { chave: 'turma', rotulo: 'Turma' },
+];
+
+const COLUNAS_IMPRESSAO = [
+  { rotulo: 'Nome', valor: a => a.nome },
+  { rotulo: 'Turma', valor: a => a.turma_nome || '' },
 ];
 
 const NOVA_TURMA = '__nova__';
@@ -20,6 +25,7 @@ export default async function renderAlunos(container) {
     <div class="toolbar">
       <input type="search" id="busca-aluno" placeholder="Buscar por nome ou turma…">
       <select id="filtro-turma"><option value="">Turma (todas)</option></select>
+      <button id="btn-imprimir" class="btn btn-secondary btn-sm">🖨️ Imprimir</button>
     </div>
     <div class="tabela-wrap">
       <table>
@@ -58,12 +64,19 @@ export default async function renderAlunos(container) {
       + turmas.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
   }
 
-  async function carregar() {
-    tbody.innerHTML = `<tr><td colspan="3" class="celula-vazia">Carregando…</td></tr>`;
-    const params = new URLSearchParams({ pagina, porPagina, ordenarPor, ordem });
+  function construirParams() {
+    const params = new URLSearchParams({ ordenarPor, ordem });
     const busca = inputBusca.value.trim();
     if (busca) params.set('busca', busca);
     if (filtroTurma.value) params.set('turma_id', filtroTurma.value);
+    return params;
+  }
+
+  async function carregar() {
+    tbody.innerHTML = `<tr><td colspan="3" class="celula-vazia">Carregando…</td></tr>`;
+    const params = construirParams();
+    params.set('pagina', pagina);
+    params.set('porPagina', porPagina);
 
     const { dados: alunos, total } = await api.get(`/api/alunos?${params.toString()}`);
 
@@ -172,6 +185,14 @@ export default async function renderAlunos(container) {
       }
     });
   }
+
+  container.querySelector('#btn-imprimir').addEventListener('click', async () => {
+    const params = construirParams();
+    params.set('pagina', 1);
+    params.set('porPagina', 500);
+    const { dados } = await api.get(`/api/alunos?${params.toString()}`);
+    imprimirTabela('Alunos', COLUNAS_IMPRESSAO, dados);
+  });
 
   container.querySelector('#btn-novo-aluno').addEventListener('click', () => abrirFormulario(null));
   inputBusca.addEventListener('input', debounce(() => { pagina = 1; carregar(); }, 350));

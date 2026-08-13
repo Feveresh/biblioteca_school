@@ -131,6 +131,8 @@ CREATE TABLE configuracoes (
   login_bloqueio_minutos    SMALLINT NOT NULL DEFAULT 15,
   auditoria_retencao_dias   INT NOT NULL DEFAULT 365,
   auditoria_ultima_limpeza  TIMESTAMP,
+  permitir_acesso_rede      BOOLEAN NOT NULL DEFAULT FALSE,
+  versao_sistema            VARCHAR(20),
   atualizado_em             TIMESTAMP NOT NULL DEFAULT NOW(),
   atualizado_por            INT REFERENCES users(id)
 );
@@ -182,4 +184,6 @@ INSERT INTO schema_migrations (nome) VALUES
   ('009_genero_livros.sql'),
   ('010_livro_editora_ano.sql'),
   ('011_turma_catalogo.sql'),
-  ('012_livro_paginas.sql');
+  ('012_livro_paginas.sql'),
+  ('013_acesso_rede.sql'),
+  ('014_versao_sistema.sql');

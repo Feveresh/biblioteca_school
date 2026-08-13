@@ -52,6 +52,13 @@ function mostrarApp() {
       link.classList.toggle('hidden', !temPermissao(usuario, link.dataset.permissao));
     });
   }
+  api.get('/api/configuracoes')
+    .then(config => {
+      if (config.versao_sistema) {
+        document.getElementById('sidebar-versao').textContent = `v${config.versao_sistema}`;
+      }
+    })
+    .catch(() => {});
   rotear();
 }
 

@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, imprimirImagens } from '../utils.js';
 
 const PALETA = ['#4f46e5', '#16a34a', '#d97706', '#dc2626', '#0891b2', '#9333ea', '#db2777', '#65a30d', '#0284c7', '#ea580c', '#4338ca', '#0f766e'];
 const MESES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -61,6 +61,7 @@ export default async function renderEstatisticas(container) {
         <h1>Estatísticas</h1>
         <div class="sub">Visão analítica da biblioteca</div>
       </div>
+      <button id="btn-imprimir" class="btn btn-secondary btn-sm">🖨️ Imprimir aba atual</button>
     </div>
 
     <div class="abas">
@@ -329,6 +330,20 @@ export default async function renderEstatisticas(container) {
       });
       criarGraficosDaAba(btn.dataset.aba);
     });
+  });
+
+  container.querySelector('#btn-imprimir').addEventListener('click', () => {
+    const abaAtiva = container.querySelector('.aba-btn.ativa');
+    const painelAtivo = container.querySelector('[data-aba-conteudo]:not(.hidden)');
+    const imagens = [...painelAtivo.querySelectorAll('.painel')].map(painel => ({
+      titulo: painel.querySelector('h2')?.textContent || '',
+      dataUrl: painel.querySelector('canvas')?.toDataURL('image/png'),
+    })).filter(img => img.dataUrl);
+
+    if (!imagens.length) {
+      return;
+    }
+    imprimirImagens('Estatísticas', imagens, abaAtiva?.textContent || '');
   });
 
   criarGraficosDaAba('geral');

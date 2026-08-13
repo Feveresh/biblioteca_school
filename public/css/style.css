@@ -360,15 +360,6 @@ input, select { font-family: inherit; }
 }
 .grafico-wrap { position: relative; height: 280px; }
 .grafico-wrap.alto { height: 340px; }
-.secao-titulo {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-  margin: 32px 0 16px;
-}
-.secao-titulo:first-child { margin-top: 0; }
 
 /* ---------- Tabela ---------- */
 .tabela-wrap {

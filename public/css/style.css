@@ -499,18 +499,60 @@ label.toggle {
 .grade-catalogo {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 .item-catalogo {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 5px 12px 5px 6px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-bg);
+  background: var(--color-surface);
   font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: border-color .15s;
 }
+.item-catalogo:has(.chip-cor):hover { border-color: var(--color-border-hover); }
+
+/* Seletor de cor nativo, recortado num círculo — some com a caixinha quadrada
+   padrão do navegador, fica só o "olho mágico" da cor escolhida. */
+.chip-cor {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  background: none;
+  flex-shrink: 0;
+}
+.chip-cor::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+.chip-cor::-webkit-color-swatch { border: 1px solid var(--color-border); border-radius: 50%; }
+.chip-cor::-moz-color-swatch { border: 1px solid var(--color-border); border-radius: 50%; }
+
+.chip-limpar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background-color .15s, color .15s;
+}
+.chip-limpar:hover { background: var(--color-danger-soft); color: var(--color-danger); }
+
 .form-catalogo-novo {
   display: flex;
   gap: 8px;
@@ -519,6 +561,17 @@ label.toggle {
 .form-catalogo-novo input {
   flex: 1;
   max-width: 280px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+.form-catalogo-novo input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 /* ---------- Gráficos (Estatísticas) ---------- */

@@ -173,9 +173,9 @@ export default async function renderLivros(container) {
     }
     el.innerHTML = generos.map(g => `
       <div class="item-catalogo">
-        <input type="color" data-cor-genero="${g.id}" value="${g.cor || '#94a3b8'}" title="Escolher cor" style="width:20px;height:20px;padding:0;border:none;border-radius:4px;cursor:pointer;background:none;flex-shrink:0;">
-        <span class="badge" style="${g.cor ? `background:${g.cor};color:${corTextoContraste(g.cor)};` : 'background:var(--color-border);color:var(--color-text-muted);'}">${escapeHtml(g.nome)}</span>
-        ${g.cor ? `<button type="button" data-limpar-cor-genero="${g.id}" title="Remover cor" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:14px;line-height:1;padding:0;">✕</button>` : ''}
+        <input type="color" class="chip-cor" data-cor-genero="${g.id}" value="${g.cor || '#94a3b8'}" title="Escolher cor">
+        <span>${escapeHtml(g.nome)}</span>
+        ${g.cor ? `<button type="button" class="chip-limpar" data-limpar-cor-genero="${g.id}" title="Remover cor">✕</button>` : ''}
       </div>
     `).join('');
   }

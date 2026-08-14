@@ -92,6 +92,7 @@ CREATE TABLE livros (
   prateleira      VARCHAR(30),
   genero_id       INT REFERENCES generos(id),
   disponivel      BOOLEAN DEFAULT TRUE,
+  capa_data_url   TEXT,
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

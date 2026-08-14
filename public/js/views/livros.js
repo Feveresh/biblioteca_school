@@ -1,6 +1,18 @@
 import { api } from '../api.js';
 import { escapeHtml, mostrarToast, abrirModal, fecharModal, confirmar, debounce, imprimirTabela } from '../utils.js';
 
+const TAMANHO_MAX_CAPA = 220 * 1024;
+const MIMES_CAPA_PERMITIDOS = ['image/png', 'image/jpeg', 'image/webp'];
+
+function lerArquivoComoDataUrl(arquivo) {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = () => resolve(leitor.result);
+    leitor.onerror = reject;
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
 const COLUNAS = [
   { chave: 'tombo', rotulo: 'Tombo' },
   { chave: 'titulo', rotulo: 'Título' },
@@ -44,6 +56,7 @@ export default async function renderLivros(container) {
       <table>
         <thead>
           <tr>
+            <th>Capa</th>
             ${COLUNAS.map(c => `<th data-ordenar="${c.chave}" style="cursor:pointer;user-select:none;">${c.rotulo} <span class="seta-ordenacao" data-seta="${c.chave}"></span></th>`).join('')}
             <th>Páginas</th><th>Localização</th><th>Status</th><th></th>
           </tr>
@@ -101,7 +114,7 @@ export default async function renderLivros(container) {
   }
 
   async function carregar() {
-    tbody.innerHTML = `<tr><td colspan="8" class="celula-vazia">Carregando…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="celula-vazia">Carregando…</td></tr>`;
     const params = construirParams();
     params.set('pagina', pagina);
     params.set('porPagina', porPagina);
@@ -109,10 +122,14 @@ export default async function renderLivros(container) {
     const { dados: livros, total } = await api.get(`/api/livros?${params.toString()}`);
 
     if (!livros.length) {
-      tbody.innerHTML = `<tr><td colspan="8" class="celula-vazia">Nenhum livro encontrado.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="celula-vazia">Nenhum livro encontrado.</td></tr>`;
     } else {
       tbody.innerHTML = livros.map(l => `
         <tr>
+          <td>${l.capa_data_url
+            ? `<img src="${l.capa_data_url}" alt="Capa de ${escapeHtml(l.titulo)}" style="width:32px;height:44px;object-fit:cover;border-radius:3px;">`
+            : `<span class="sub" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:44px;">—</span>`}
+          </td>
           <td>${escapeHtml(l.tombo)}</td>
           <td>${escapeHtml(l.titulo)}</td>
           <td>${escapeHtml(l.autor || '—')}</td>
@@ -166,6 +183,17 @@ export default async function renderLivros(container) {
         </div>
         <div class="form-linha">
           <div class="campo">
+            <label for="f-capa">Capa <span class="sub">(opcional, PNG/JPEG/WEBP até 220KB)</span></label>
+            <input type="file" id="f-capa" accept="image/png,image/jpeg,image/webp">
+          </div>
+          <div class="campo">
+            <label>Prévia</label>
+            <div id="capa-preview">${livro && livro.capa_data_url ? `<img src="${livro.capa_data_url}" alt="Prévia da capa" style="height:70px;border-radius:4px;">` : '<span class="sub">Sem capa</span>'}</div>
+          </div>
+        </div>
+        ${livro && livro.capa_data_url ? '<button type="button" id="btn-remover-capa" class="btn btn-secondary btn-sm">Remover capa</button>' : ''}
+        <div class="form-linha">
+          <div class="campo">
             <label for="f-editora">Editora <span class="sub">(opcional)</span></label>
             <input id="f-editora" value="${livro && livro.editora ? escapeHtml(livro.editora) : ''}">
           </div>
@@ -213,6 +241,33 @@ export default async function renderLivros(container) {
       if (ehNovo) inputGeneroNovo.focus();
     });
 
+    let capaAtual = livro?.capa_data_url || null;
+    corpo.querySelector('#f-capa').addEventListener('change', async (e) => {
+      const arquivo = e.target.files[0];
+      if (!arquivo) return;
+      if (!MIMES_CAPA_PERMITIDOS.includes(arquivo.type)) {
+        mostrarToast('Formato de imagem não suportado. Use PNG, JPEG ou WEBP.', 'erro');
+        e.target.value = '';
+        return;
+      }
+      if (arquivo.size > TAMANHO_MAX_CAPA) {
+        mostrarToast('Capa muito grande — o máximo é 220KB.', 'erro');
+        e.target.value = '';
+        return;
+      }
+      capaAtual = await lerArquivoComoDataUrl(arquivo);
+      corpo.querySelector('#capa-preview').innerHTML = `<img src="${capaAtual}" alt="Prévia da capa" style="height:70px;border-radius:4px;">`;
+    });
+
+    const btnRemoverCapa = corpo.querySelector('#btn-remover-capa');
+    if (btnRemoverCapa) {
+      btnRemoverCapa.addEventListener('click', () => {
+        capaAtual = null;
+        corpo.querySelector('#capa-preview').innerHTML = '<span class="sub">Sem capa</span>';
+        corpo.querySelector('#f-capa').value = '';
+      });
+    }
+
     corpo.querySelector('#cancelar-livro').addEventListener('click', fecharModal);
     corpo.querySelector('#form-livro').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -243,6 +298,7 @@ export default async function renderLivros(container) {
           estante: corpo.querySelector('#f-estante').value.trim() || null,
           prateleira: corpo.querySelector('#f-prateleira').value.trim() || null,
           genero_id: generoId,
+          capa_data_url: capaAtual,
         };
         if (editando) {
           await api.put(`/api/livros/${livro.id}`, dados);

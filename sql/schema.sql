@@ -90,6 +90,7 @@ CREATE TABLE livros (
   prateleira      VARCHAR(30),
   genero_id       INT REFERENCES generos(id),
   disponivel      BOOLEAN DEFAULT TRUE,
+  capa_data_url   TEXT,
   created_at      TIMESTAMP DEFAULT NOW()
 );
 
@@ -190,4 +191,5 @@ INSERT INTO schema_migrations (nome) VALUES
   ('012_livro_paginas.sql'),
   ('013_acesso_rede.sql'),
   ('014_versao_sistema.sql'),
-  ('015_colunas_busca_normalizada.sql');
+  ('015_colunas_busca_normalizada.sql'),
+  ('016_capa_livro.sql');

@@ -3,6 +3,7 @@ const { construirOrdenacao, construirPaginacao } = require('../utils/listagem');
 const { normalizarBusca } = require('../utils/normalizarBusca');
 
 const COLUNAS_ORDENACAO = ['titulo', 'autor', 'tombo', 'disponivel', 'estante'];
+const TAMANHO_MAX_CAPA = 300 * 1024; // base64 já embutido no JSON — igual ao padrão do logo em Configurações
 
 // Listar livros — busca, filtros, ordenação (inclui "genero", tratado à parte por não
 // ser uma coluna de livros) e paginação
@@ -77,15 +78,18 @@ exports.buscar = async (req, res) => {
 
 // Cadastrar livro
 exports.criar = async (req, res) => {
-  const { tombo, titulo, autor, editora, ano_publicacao, paginas, estante, prateleira, genero_id } = req.body;
+  const { tombo, titulo, autor, editora, ano_publicacao, paginas, estante, prateleira, genero_id, capa_data_url } = req.body;
   if (!tombo || !titulo) {
     return res.status(400).json({ erro: 'Tombo e título são obrigatórios' });
   }
+  if (capa_data_url && capa_data_url.length > TAMANHO_MAX_CAPA) {
+    return res.status(400).json({ erro: 'Capa muito grande (máximo ~220KB)' });
+  }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO livros (tombo, titulo, titulo_busca, autor, autor_busca, editora, ano_publicacao, paginas, estante, prateleira, genero_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [tombo, titulo, normalizarBusca(titulo), autor, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null]
+      `INSERT INTO livros (tombo, titulo, titulo_busca, autor, autor_busca, editora, ano_publicacao, paginas, estante, prateleira, genero_id, capa_data_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [tombo, titulo, normalizarBusca(titulo), autor, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, capa_data_url || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -98,16 +102,19 @@ exports.criar = async (req, res) => {
 
 // Atualizar livro
 exports.atualizar = async (req, res) => {
-  const { tombo, titulo, autor, editora, ano_publicacao, paginas, estante, prateleira, genero_id } = req.body;
+  const { tombo, titulo, autor, editora, ano_publicacao, paginas, estante, prateleira, genero_id, capa_data_url } = req.body;
   if (!tombo || !titulo) {
     return res.status(400).json({ erro: 'Tombo e título são obrigatórios' });
+  }
+  if (capa_data_url && capa_data_url.length > TAMANHO_MAX_CAPA) {
+    return res.status(400).json({ erro: 'Capa muito grande (máximo ~220KB)' });
   }
   try {
     const { rows } = await pool.query(
       `UPDATE livros SET tombo=$1, titulo=$2, titulo_busca=$3, autor=$4, autor_busca=$5, editora=$6, ano_publicacao=$7,
-                          paginas=$8, estante=$9, prateleira=$10, genero_id=$11
-       WHERE id=$12 RETURNING *`,
-      [tombo, titulo, normalizarBusca(titulo), autor, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, req.params.id]
+                          paginas=$8, estante=$9, prateleira=$10, genero_id=$11, capa_data_url=$12
+       WHERE id=$13 RETURNING *`,
+      [tombo, titulo, normalizarBusca(titulo), autor, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, capa_data_url || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ erro: 'Livro não encontrado' });
     res.json(rows[0]);

@@ -123,9 +123,10 @@ export default async function renderConfiguracoes(container) {
         <div class="painel">
           <h2>Acesso pela rede</h2>
           <p class="sub" style="margin:0 0 14px;">Por padrão, o sistema só pode ser acessado por este computador. Ativando, outros computadores da mesma rede da escola também conseguem acessar pelo navegador.</p>
-          <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
+          <label class="toggle" style="font-weight:600;">
             <input type="checkbox" id="f-acesso-rede" ${config.permitir_acesso_rede ? 'checked' : ''} ${desabilitado}>
-            Permitir acesso pela rede
+            <span class="toggle-trilho"></span>
+            <span class="toggle-texto">Permitir acesso pela rede</span>
           </label>
           <div class="form-linha" style="margin-top:16px;">
             <div class="campo">

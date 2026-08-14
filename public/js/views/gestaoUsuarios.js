@@ -264,12 +264,15 @@ async function renderAbaPapeis(container) {
     return Object.entries(porCategoria).map(([categoria, permissoes]) => `
       <fieldset class="grupo-permissoes">
         <legend>${NOMES_CATEGORIA[categoria] || escapeHtml(categoria)}</legend>
-        ${permissoes.map(perm => `
-          <label class="opcao-checkbox">
-            <input type="checkbox" name="permissao" value="${perm.codigo}" ${permissoesSelecionadas.includes(perm.codigo) ? 'checked' : ''}>
-            ${escapeHtml(perm.descricao)}
-          </label>
-        `).join('')}
+        <div class="grupo-permissoes-itens">
+          ${permissoes.map(perm => `
+            <label class="toggle">
+              <input type="checkbox" name="permissao" value="${perm.codigo}" ${permissoesSelecionadas.includes(perm.codigo) ? 'checked' : ''}>
+              <span class="toggle-trilho"></span>
+              <span class="toggle-texto">${escapeHtml(perm.descricao)}</span>
+            </label>
+          `).join('')}
+        </div>
       </fieldset>
     `).join('');
   }

@@ -6,6 +6,14 @@ const EXPRESSAO_MES = pool.usaSqlite
   ? "strftime('%Y-%m', data_emprestimo)"
   : "to_char(date_trunc('month', data_emprestimo), 'YYYY-MM')";
 
+// No SQLite as colunas DATE ficam guardadas como TEXT ("AAAA-MM-DD") — "data1 - data2" não
+// subtrai datas, o "-" força as duas a número e cada uma vira só o prefixo "AAAA" (perde
+// mês/dia), dando uma diferença sem sentido (ex: duas datas no mesmo ano sempre dão 0).
+// julianday() resolve certo nos dois motores.
+const EXPRESSAO_DIAS_ATE_DEVOLUCAO = pool.usaSqlite
+  ? 'julianday(data_devolucao) - julianday(data_emprestimo)'
+  : 'data_devolucao - data_emprestimo';
+
 // Gera os últimos `n` meses no formato 'YYYY-MM', do mais antigo pro mais recente,
 // pra garantir que o gráfico tenha um ponto por mês mesmo sem empréstimos registrados.
 function ultimosMeses(n) {
@@ -111,7 +119,7 @@ exports.resumo = async (req, res) => {
     `),
     // 10: tempo médio de empréstimo até devolução (dias)
     pool.query(`
-      SELECT COALESCE(ROUND(AVG(data_devolucao - data_emprestimo)), 0)::int AS dias
+      SELECT COALESCE(ROUND(AVG(${EXPRESSAO_DIAS_ATE_DEVOLUCAO})), 0)::int AS dias
       FROM emprestimos
       WHERE status = 'devolvido' AND data_devolucao IS NOT NULL
     `),

@@ -141,15 +141,19 @@ export function mostrarToast(mensagem, tipo = 'info') {
 }
 
 const overlay = document.getElementById('modal-overlay');
+const modal = overlay.querySelector('.modal');
 const modalTitulo = document.getElementById('modal-titulo');
 const modalCorpo = document.getElementById('modal-corpo');
 document.getElementById('modal-fechar').addEventListener('click', fecharModal);
 overlay.addEventListener('click', (e) => { if (e.target === overlay) fecharModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharModal(); });
 
-export function abrirModal(titulo, conteudoHtml) {
+// opcoes.grande: formulários com muitos campos (livro, papel) usam um modal mais largo,
+// com os campos organizados em grade, em vez de empilhados numa coluna estreita.
+export function abrirModal(titulo, conteudoHtml, opcoes = {}) {
   modalTitulo.textContent = titulo;
   modalCorpo.innerHTML = conteudoHtml;
+  modal.classList.toggle('modal-grande', Boolean(opcoes.grande));
   overlay.classList.remove('hidden');
   return modalCorpo;
 }

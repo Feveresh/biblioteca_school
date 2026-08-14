@@ -169,30 +169,27 @@ export default async function renderLivros(container) {
     const editando = Boolean(livro);
     const corpo = abrirModal(editando ? 'Editar livro' : 'Novo livro', `
       <form id="form-livro">
-        <div class="campo">
-          <label for="f-tombo">Tombo</label>
-          <input id="f-tombo" required value="${livro ? escapeHtml(livro.tombo) : ''}">
-        </div>
-        <div class="campo">
-          <label for="f-titulo">Título</label>
-          <input id="f-titulo" required value="${livro ? escapeHtml(livro.titulo) : ''}">
-        </div>
-        <div class="campo">
-          <label for="f-autor">Autor</label>
-          <input id="f-autor" value="${livro && livro.autor ? escapeHtml(livro.autor) : ''}">
-        </div>
-        <div class="form-linha">
+        <div class="campo-capa-livro">
+          <div id="capa-preview" class="capa-preview-grande">${livro && livro.capa_data_url ? `<img src="${livro.capa_data_url}" alt="Prévia da capa">` : '<span class="sub">Sem capa</span>'}</div>
           <div class="campo">
             <label for="f-capa">Capa <span class="sub">(opcional, PNG/JPEG/WEBP até 220KB)</span></label>
             <input type="file" id="f-capa" accept="image/png,image/jpeg,image/webp">
-          </div>
-          <div class="campo">
-            <label>Prévia</label>
-            <div id="capa-preview">${livro && livro.capa_data_url ? `<img src="${livro.capa_data_url}" alt="Prévia da capa" style="height:70px;border-radius:4px;">` : '<span class="sub">Sem capa</span>'}</div>
+            ${livro && livro.capa_data_url ? '<button type="button" id="btn-remover-capa" class="btn btn-secondary btn-sm" style="margin-top:8px;">Remover capa</button>' : ''}
           </div>
         </div>
-        ${livro && livro.capa_data_url ? '<button type="button" id="btn-remover-capa" class="btn btn-secondary btn-sm">Remover capa</button>' : ''}
-        <div class="form-linha">
+        <div class="modal-grade">
+          <div class="campo">
+            <label for="f-tombo">Tombo</label>
+            <input id="f-tombo" required value="${livro ? escapeHtml(livro.tombo) : ''}">
+          </div>
+          <div class="campo">
+            <label for="f-titulo">Título</label>
+            <input id="f-titulo" required value="${livro ? escapeHtml(livro.titulo) : ''}">
+          </div>
+          <div class="campo">
+            <label for="f-autor">Autor</label>
+            <input id="f-autor" value="${livro && livro.autor ? escapeHtml(livro.autor) : ''}">
+          </div>
           <div class="campo">
             <label for="f-editora">Editora <span class="sub">(opcional)</span></label>
             <input id="f-editora" value="${livro && livro.editora ? escapeHtml(livro.editora) : ''}">
@@ -205,17 +202,6 @@ export default async function renderLivros(container) {
             <label for="f-paginas">Páginas <span class="sub">(opcional)</span></label>
             <input type="number" id="f-paginas" min="1" value="${livro && livro.paginas ? livro.paginas : ''}">
           </div>
-        </div>
-        <div class="campo">
-          <label for="f-genero">Gênero</label>
-          <select id="f-genero">
-            <option value="">Sem gênero</option>
-            ${opcoesGenero(livro ? livro.genero_id : null)}
-            <option value="${NOVO_GENERO}">+ Adicionar novo gênero…</option>
-          </select>
-          <input type="text" id="f-genero-novo" placeholder="Nome do novo gênero" class="hidden" style="margin-top:8px;">
-        </div>
-        <div class="form-linha">
           <div class="campo">
             <label for="f-estante">Estante</label>
             <input id="f-estante" value="${livro && livro.estante ? escapeHtml(livro.estante) : ''}">
@@ -224,6 +210,15 @@ export default async function renderLivros(container) {
             <label for="f-prateleira">Prateleira</label>
             <input id="f-prateleira" value="${livro && livro.prateleira ? escapeHtml(livro.prateleira) : ''}">
           </div>
+          <div class="campo campo-full">
+            <label for="f-genero">Gênero</label>
+            <select id="f-genero">
+              <option value="">Sem gênero</option>
+              ${opcoesGenero(livro ? livro.genero_id : null)}
+              <option value="${NOVO_GENERO}">+ Adicionar novo gênero…</option>
+            </select>
+            <input type="text" id="f-genero-novo" placeholder="Nome do novo gênero" class="hidden" style="margin-top:8px;">
+          </div>
         </div>
         <p id="form-livro-erro" class="mensagem-erro hidden"></p>
         <div class="modal-acoes">
@@ -231,7 +226,7 @@ export default async function renderLivros(container) {
           <button type="submit" class="btn btn-primary">${editando ? 'Salvar' : 'Cadastrar'}</button>
         </div>
       </form>
-    `);
+    `, { grande: true });
 
     const selectGenero = corpo.querySelector('#f-genero');
     const inputGeneroNovo = corpo.querySelector('#f-genero-novo');
@@ -256,7 +251,7 @@ export default async function renderLivros(container) {
         return;
       }
       capaAtual = await lerArquivoComoDataUrl(arquivo);
-      corpo.querySelector('#capa-preview').innerHTML = `<img src="${capaAtual}" alt="Prévia da capa" style="height:70px;border-radius:4px;">`;
+      corpo.querySelector('#capa-preview').innerHTML = `<img src="${capaAtual}" alt="Prévia da capa">`;
     });
 
     const btnRemoverCapa = corpo.querySelector('#btn-remover-capa');

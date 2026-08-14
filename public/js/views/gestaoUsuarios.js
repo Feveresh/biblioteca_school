@@ -279,13 +279,15 @@ async function renderAbaPapeis(container) {
     const acessoTotal = Boolean(papel?.acesso_total);
     const corpo = abrirModal(editando ? 'Editar papel' : 'Novo papel', `
       <form id="form-papel">
-        <div class="campo">
-          <label for="f-nome">Nome</label>
-          <input id="f-nome" required value="${papel ? escapeHtml(papel.nome) : ''}">
-        </div>
-        <div class="campo">
-          <label for="f-descricao">Descrição</label>
-          <input id="f-descricao" value="${papel && papel.descricao ? escapeHtml(papel.descricao) : ''}">
+        <div class="modal-grade">
+          <div class="campo">
+            <label for="f-nome">Nome</label>
+            <input id="f-nome" required value="${papel ? escapeHtml(papel.nome) : ''}">
+          </div>
+          <div class="campo">
+            <label for="f-descricao">Descrição</label>
+            <input id="f-descricao" value="${papel && papel.descricao ? escapeHtml(papel.descricao) : ''}">
+          </div>
         </div>
         ${acessoTotal
           ? '<p class="sub">Este papel tem <strong>acesso total</strong> ao sistema — não é possível restringir permissões individuais.</p>'
@@ -296,7 +298,7 @@ async function renderAbaPapeis(container) {
           <button type="submit" class="btn btn-primary">${editando ? 'Salvar' : 'Cadastrar'}</button>
         </div>
       </form>
-    `);
+    `, { grande: true });
 
     corpo.querySelector('#cancelar-papel').addEventListener('click', fecharModal);
     corpo.querySelector('#form-papel').addEventListener('submit', async (e) => {

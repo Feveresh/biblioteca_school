@@ -33,9 +33,26 @@ async function testarConexao(connectionString) {
   }
 }
 
+// Colunas TIMESTAMP (com hora) vêm do adaptador SQLite já como string ISO em UTC, tipo
+// "2026-08-14T14:32:10.123Z" (ver normalizarTimestamps em config/db.js). Datas puras
+// ("data_emprestimo" etc, formato "AAAA-MM-DD", sem hora) não caem nesse regex — sem
+// horário, não há fuso pra confundir, então passam direto sem problema.
+const REGEX_TIMESTAMP_ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
 function normalizarValor(valor, coluna, tabela) {
   if (tabela.bool?.includes(coluna) && (valor === 0 || valor === 1)) {
     return valor === 1;
+  }
+  // As colunas TIMESTAMP do Postgres aqui são "sem fuso" (ver sql/schema.sql). Gravar a
+  // STRING ISO direto faz o Postgres ignorar o "Z" e guardar os dígitos literalmente; na
+  // leitura, o driver "pg" reinterpreta esses dígitos como horário LOCAL do processo — o
+  // resultado sai deslocado pelo fuso do servidor (3h a mais em America/Sao_Paulo). Um
+  // objeto Date, em vez de string, faz o "pg" serializar certo pro fuso da sessão na escrita,
+  // e o valor volta correto na leitura. Já pegou "tokens_validos_apos" (usuário deslogado
+  // sozinho até o relógio real alcançar o horário errado) — mesma classe afeta created_at,
+  // criado_em, atualizado_em.
+  if (typeof valor === 'string' && REGEX_TIMESTAMP_ISO_UTC.test(valor)) {
+    return new Date(valor);
   }
   return valor;
 }

@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
-const pool = require('../config/db');
 const { compararVersoes } = require('./compararVersoes');
 const versaoAtual = require('../package.json').version;
 
@@ -33,10 +32,12 @@ function limparEstadoNaSubida() {
   }
 }
 
-// Sem servidor de verificação configurado (padrão) = nunca tenta nada pela rede.
+// A URL do servidor de verificação vive só no .env (arquivo protegido, fora do alcance da
+// interface web) — não é um dado de sistema editável por qualquer administrador logado,
+// já que aponta pra onde o servidor baixa e roda um instalador automaticamente.
+// Sem ela configurada (padrão) = nunca tenta nada pela rede.
 async function verificarAtualizacao() {
-  const { rows } = await pool.query('SELECT url_verificacao_atualizacao FROM configuracoes WHERE id = 1');
-  const url = rows[0]?.url_verificacao_atualizacao;
+  const url = process.env.URL_VERIFICACAO_ATUALIZACAO;
   if (!url) return { temAtualizacao: false };
 
   try {

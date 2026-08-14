@@ -139,7 +139,6 @@ CREATE TABLE configuracoes (
   auditoria_ultima_limpeza  TIMESTAMP,
   permitir_acesso_rede      BOOLEAN NOT NULL DEFAULT FALSE,
   versao_sistema            VARCHAR(20),
-  url_verificacao_atualizacao VARCHAR(255),
   atualizado_em             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   atualizado_por            INT REFERENCES users(id)
 );

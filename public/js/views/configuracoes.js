@@ -121,18 +121,6 @@ export default async function renderConfiguracoes(container) {
         </div>
 
         <div class="painel">
-          <h2>Atualizações do sistema</h2>
-          <p class="sub" style="margin:0 0 14px;">
-            Endereço de um servidor que informa a versão mais recente disponível — checado a cada login
-            (só para administradores). Em branco, o sistema nunca verifica nada pela rede.
-          </p>
-          <div class="campo">
-            <label for="f-url-atualizacao">URL de verificação de atualização <span class="sub">(opcional)</span></label>
-            <input id="f-url-atualizacao" placeholder="ex: http://localhost:4000/versao-mais-recente" value="${config.url_verificacao_atualizacao ? escapeHtml(config.url_verificacao_atualizacao) : ''}" ${desabilitado}>
-          </div>
-        </div>
-
-        <div class="painel">
           <h2>Acesso pela rede</h2>
           <p class="sub" style="margin:0 0 14px;">Por padrão, o sistema só pode ser acessado por este computador. Ativando, outros computadores da mesma rede da escola também conseguem acessar pelo navegador.</p>
           <label class="toggle" style="font-weight:600;">
@@ -231,7 +219,6 @@ export default async function renderConfiguracoes(container) {
       login_bloqueio_minutos: Number(container.querySelector('#f-bloqueio').value),
       auditoria_retencao_dias: Number(container.querySelector('#f-retencao').value),
       permitir_acesso_rede: container.querySelector('#f-acesso-rede').checked,
-      url_verificacao_atualizacao: container.querySelector('#f-url-atualizacao').value.trim() || null,
     };
     CORES.forEach(c => { dados[c.campo] = container.querySelector(`#${c.id}`).value; });
 
@@ -284,7 +271,7 @@ export default async function renderConfiguracoes(container) {
     });
   });
 
-  ['#f-nome', '#f-dias', '#f-limite', '#f-max-tentativas', '#f-bloqueio', '#f-retencao', '#f-url-atualizacao'].forEach(seletor => {
+  ['#f-nome', '#f-dias', '#f-limite', '#f-max-tentativas', '#f-bloqueio', '#f-retencao'].forEach(seletor => {
     container.querySelector(seletor).addEventListener('input', salvarComDebounce);
   });
 

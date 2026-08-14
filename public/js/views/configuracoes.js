@@ -164,6 +164,23 @@ export default async function renderConfiguracoes(container) {
             <div id="migracao-relatorio"></div>
           </div>
         ` : ''}
+
+        ${config.motorBanco === 'postgres' && podeEditar ? `
+          <div class="painel">
+            <h2>Migrar para SQLite</h2>
+            <p class="sub" style="margin:0 0 14px;">
+              O sistema está usando PostgreSQL. Se não precisar mais de um banco em rede, dá pra
+              voltar a usar o SQLite (arquivo local, sem instalação extra). O PostgreSQL <strong>não é
+              apagado</strong> nesse processo — continua disponível caso precise migrar de volta.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" id="btn-migracao-sqlite-copiar" class="btn btn-secondary btn-sm">Copiar dados</button>
+              <button type="button" id="btn-migracao-sqlite-finalizar" class="btn btn-danger btn-sm" disabled>Finalizar migração</button>
+            </div>
+            <p id="migracao-sqlite-status" class="sub" style="margin-top:10px;min-height:16px;"></p>
+            <div id="migracao-sqlite-relatorio"></div>
+          </div>
+        ` : ''}
       </div>
 
       <p id="config-erro" class="mensagem-erro hidden"></p>
@@ -359,6 +376,63 @@ export default async function renderConfiguracoes(container) {
         mostrarToast(err.message, 'erro');
         btnCopiar.disabled = false;
         btnFinalizar.disabled = false;
+      }
+    });
+  }
+
+  // Migração PostgreSQL → SQLite — só existe no DOM quando motorBanco === 'postgres'.
+  const btnCopiarSqlite = container.querySelector('#btn-migracao-sqlite-copiar');
+  if (btnCopiarSqlite) {
+    const statusSqlite = container.querySelector('#migracao-sqlite-status');
+    const relatorioSqlite = container.querySelector('#migracao-sqlite-relatorio');
+    const btnFinalizarSqlite = container.querySelector('#btn-migracao-sqlite-finalizar');
+
+    btnCopiarSqlite.addEventListener('click', async () => {
+      btnFinalizarSqlite.disabled = true;
+      btnCopiarSqlite.disabled = true;
+      statusSqlite.textContent = 'Copiando dados — isso pode levar alguns segundos...';
+      relatorioSqlite.innerHTML = '';
+      try {
+        const { relatorio } = await api.post('/api/migracao/sqlite/copiar');
+        statusSqlite.textContent = '✓ Cópia concluída. Confira o relatório antes de finalizar.';
+        relatorioSqlite.innerHTML = `
+          <div class="tabela-wrap" style="margin-top:10px;box-shadow:none;border:none;">
+            <table>
+              <thead><tr><th>Tabela</th><th>Linhas copiadas</th></tr></thead>
+              <tbody>
+                ${relatorio.map(r => `<tr><td>${escapeHtml(r.tabela)}</td><td>${r.destino} / ${r.origem}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        btnFinalizarSqlite.disabled = false;
+      } catch (err) {
+        statusSqlite.textContent = '';
+        mostrarToast(err.message, 'erro');
+      } finally {
+        btnCopiarSqlite.disabled = false;
+      }
+    });
+
+    btnFinalizarSqlite.addEventListener('click', async () => {
+      const ok = await confirmar(
+        'Isso vai trocar o sistema para usar o arquivo SQLite recém-copiado (o PostgreSQL não é apagado, continua disponível). Depois disso é preciso reiniciar o sistema. Tem certeza?',
+        { titulo: 'Finalizar migração para SQLite', textoConfirmar: 'Sim, finalizar', perigo: true }
+      );
+      if (!ok) return;
+
+      btnFinalizarSqlite.disabled = true;
+      btnCopiarSqlite.disabled = true;
+      statusSqlite.textContent = 'Finalizando — atualizando configuração...';
+      try {
+        const resultado = await api.post('/api/migracao/sqlite/finalizar');
+        statusSqlite.textContent = `✓ ${resultado.mensagem}`;
+        mostrarToast('Migração concluída! Reinicie o sistema para usar o SQLite.', 'sucesso');
+      } catch (err) {
+        statusSqlite.textContent = '';
+        mostrarToast(err.message, 'erro');
+        btnCopiarSqlite.disabled = false;
+        btnFinalizarSqlite.disabled = false;
       }
     });
   }

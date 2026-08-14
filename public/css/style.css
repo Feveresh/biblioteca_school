@@ -421,6 +421,8 @@ label.toggle {
   border-radius: 8px;
   font-size: 14px;
   min-width: 240px;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .toolbar input[type="search"]:focus { outline: none; border-color: var(--color-primary); }
 .toolbar select, .toolbar input[type="date"] {

@@ -1,5 +1,7 @@
 const pool = require('../config/db');
 
+const REGEX_COR = /^#[0-9a-fA-F]{6}$/;
+
 // GET /api/generos — catálogo completo, ordenado alfabeticamente
 exports.listar = async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM generos ORDER BY nome');
@@ -24,4 +26,19 @@ exports.criar = async (req, res) => {
     }
     throw err;
   }
+};
+
+// PATCH /api/generos/:id — só a cor (usada como fundo do badge de gênero na listagem de
+// itens); "cor: null" limpa, voltando pro badge neutro padrão.
+exports.atualizarCor = async (req, res) => {
+  const { cor } = req.body;
+  if (cor !== null && !REGEX_COR.test(cor || '')) {
+    return res.status(400).json({ erro: 'Cor inválida (use o formato #RRGGBB)' });
+  }
+  const { rows } = await pool.query(
+    'UPDATE generos SET cor = $1 WHERE id = $2 RETURNING *',
+    [cor, req.params.id]
+  );
+  if (!rows[0]) return res.status(404).json({ erro: 'Gênero não encontrado' });
+  res.json(rows[0]);
 };

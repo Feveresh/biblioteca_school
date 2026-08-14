@@ -42,11 +42,13 @@ async function seed() {
       console.log('ℹ️  Usuário admin já existe, pulando.');
     }
 
+    const tipoLivro = await client.query("SELECT id FROM tipos WHERE nome = 'Livro'");
+    const tipoLivroId = tipoLivro.rows[0]?.id || null;
     for (const livro of LIVROS) {
       await client.query(
-        `INSERT INTO livros (tombo, titulo, autor, titulo_busca, autor_busca) VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO livros (tombo, titulo, autor, titulo_busca, autor_busca, tipo_id) VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (tombo) DO NOTHING`,
-        [livro.tombo, livro.titulo, livro.autor, normalizarBusca(livro.titulo), normalizarBusca(livro.autor)]
+        [livro.tombo, livro.titulo, livro.autor, normalizarBusca(livro.titulo), normalizarBusca(livro.autor), tipoLivroId]
       );
     }
     console.log(`✅ ${LIVROS.length} livros de exemplo garantidos.`);

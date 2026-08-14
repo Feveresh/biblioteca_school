@@ -68,14 +68,23 @@ CREATE TABLE users (
 -- ===== Gêneros (catálogo fixo, com opção de adicionar novos pela tela de livros) =====
 CREATE TABLE generos (
   id    SERIAL PRIMARY KEY,
-  nome  VARCHAR(60) UNIQUE NOT NULL
+  nome  VARCHAR(60) UNIQUE NOT NULL,
+  cor   VARCHAR(7)  -- opcional, "#RRGGBB" — fundo do badge na listagem de itens
 );
 INSERT INTO generos (nome) VALUES
   ('Aventura'), ('Biografia'), ('Clássico'), ('Comédia'), ('Didático'),
   ('Drama'), ('Fantasia'), ('Ficção Científica'), ('História'), ('Infantil'),
   ('Poesia'), ('Romance'), ('Suspense'), ('Terror'), ('Outro');
 
--- ===== Livros =====
+-- ===== Tipos de item (Livro, HQ, Mangá, Revista...) =====
+CREATE TABLE tipos (
+  id    SERIAL PRIMARY KEY,
+  nome  VARCHAR(60) UNIQUE NOT NULL
+);
+INSERT INTO tipos (nome) VALUES
+  ('Livro'), ('HQ'), ('Mangá'), ('Revista');
+
+-- ===== Livros (acervo — apesar do nome, cobre qualquer tipo de item) =====
 CREATE TABLE livros (
   id              SERIAL PRIMARY KEY,
   tombo           VARCHAR(20) UNIQUE NOT NULL,  -- número do carimbo
@@ -89,6 +98,7 @@ CREATE TABLE livros (
   estante         VARCHAR(30),
   prateleira      VARCHAR(30),
   genero_id       INT REFERENCES generos(id),
+  tipo_id         INT REFERENCES tipos(id),
   disponivel      BOOLEAN DEFAULT TRUE,
   capa_data_url   TEXT,
   created_at      TIMESTAMP DEFAULT NOW()
@@ -194,4 +204,6 @@ INSERT INTO schema_migrations (nome) VALUES
   ('015_colunas_busca_normalizada.sql'),
   ('016_capa_livro.sql'),
   ('017_url_verificacao_atualizacao.sql'),
-  ('018_remove_url_verificacao_atualizacao.sql');
+  ('018_remove_url_verificacao_atualizacao.sql'),
+  ('019_tipo_livros.sql'),
+  ('020_genero_cor.sql');

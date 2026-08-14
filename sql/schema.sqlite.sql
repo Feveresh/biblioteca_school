@@ -70,14 +70,23 @@ CREATE TABLE users (
 -- ===== Gêneros (catálogo fixo, com opção de adicionar novos pela tela de livros) =====
 CREATE TABLE generos (
   id    INTEGER PRIMARY KEY AUTOINCREMENT,
-  nome  VARCHAR(60) UNIQUE NOT NULL
+  nome  VARCHAR(60) UNIQUE NOT NULL,
+  cor   VARCHAR(7)
 );
 INSERT INTO generos (nome) VALUES
   ('Aventura'), ('Biografia'), ('Clássico'), ('Comédia'), ('Didático'),
   ('Drama'), ('Fantasia'), ('Ficção Científica'), ('História'), ('Infantil'),
   ('Poesia'), ('Romance'), ('Suspense'), ('Terror'), ('Outro');
 
--- ===== Livros =====
+-- ===== Tipos de item (Livro, HQ, Mangá, Revista...) =====
+CREATE TABLE tipos (
+  id    INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome  VARCHAR(60) UNIQUE NOT NULL
+);
+INSERT INTO tipos (nome) VALUES
+  ('Livro'), ('HQ'), ('Mangá'), ('Revista');
+
+-- ===== Livros (acervo — apesar do nome, cobre qualquer tipo de item) =====
 CREATE TABLE livros (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   tombo           VARCHAR(20) UNIQUE NOT NULL,
@@ -91,6 +100,7 @@ CREATE TABLE livros (
   estante         VARCHAR(30),
   prateleira      VARCHAR(30),
   genero_id       INT REFERENCES generos(id),
+  tipo_id         INT REFERENCES tipos(id),
   disponivel      BOOLEAN DEFAULT TRUE,
   capa_data_url   TEXT,
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP

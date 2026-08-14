@@ -21,12 +21,12 @@ export default async function renderDashboard(container) {
       <div class="stat-card sucesso">
         <div class="stat-icone">✅</div>
         <div class="stat-valor">${dados.livros.disponiveis}</div>
-        <div class="stat-label">Disponíveis</div>
+        <div class="stat-label">Livros disponíveis</div>
       </div>
       <div class="stat-card">
         <div class="stat-icone">📤</div>
         <div class="stat-valor">${dados.livros.emprestados}</div>
-        <div class="stat-label">Emprestados</div>
+        <div class="stat-label">Livros emprestados</div>
       </div>
       <div class="stat-card">
         <div class="stat-icone">🎓</div>

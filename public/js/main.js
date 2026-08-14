@@ -118,10 +118,11 @@ formLogin.addEventListener('submit', async (e) => {
   loginErro.classList.add('hidden');
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
+  const lembrar = document.getElementById('login-lembrar').checked;
   const botao = formLogin.querySelector('button');
   botao.disabled = true;
   try {
-    const { token, usuario } = await api.post('/api/auth/login', { email, senha });
+    const { token, usuario } = await api.post('/api/auth/login', { email, senha, lembrar });
     salvarSessao(token, usuario);
     localStorage.setItem(CHAVE_ULTIMO_EMAIL, email);
     mostrarApp();

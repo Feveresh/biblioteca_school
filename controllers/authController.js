@@ -7,12 +7,16 @@ const { minutosAtras } = require('../utils/dataAtras');
 
 const TOKEN_EXPIRA_EM = '8h';
 
-function gerarToken(usuarioId) {
+function gerarToken(usuarioId, lembrar) {
   // `emitidoEm` em milissegundos (não o `iat` padrão, que só tem precisão de segundo) —
   // evita ambiguidade ao comparar com `tokens_validos_apos` na revogação de sessão
   // (ver middleware/auth.js), que precisa de precisão sub-segundo pra ser confiável
   // logo após um login ou logout (users criados e autenticados quase ao mesmo tempo).
-  return jwt.sign({ id: usuarioId, emitidoEm: Date.now() }, process.env.JWT_SECRET, { expiresIn: TOKEN_EXPIRA_EM });
+  // Com "lembrar" marcado, o token não leva `exp` — vale pra sempre (sobrevive a reinícios
+  // do servidor, já que é o mesmo JWT_SECRET), até um logout explícito revogar via
+  // tokens_validos_apos.
+  const opcoes = lembrar ? {} : { expiresIn: TOKEN_EXPIRA_EM };
+  return jwt.sign({ id: usuarioId, emitidoEm: Date.now() }, process.env.JWT_SECRET, opcoes);
 }
 
 async function registrarTentativaLogin(email, sucesso) {
@@ -21,7 +25,7 @@ async function registrarTentativaLogin(email, sucesso) {
 
 // POST /api/auth/login
 exports.login = async (req, res) => {
-  const { email, senha } = req.body;
+  const { email, senha, lembrar } = req.body;
   if (!email || !senha) {
     return res.status(400).json({ erro: 'Email e senha são obrigatórios' });
   }
@@ -59,7 +63,7 @@ exports.login = async (req, res) => {
   await registrarTentativaLogin(email, true);
 
   const usuarioCompleto = await buscarUsuarioAutenticado(usuario.id);
-  const token = gerarToken(usuario.id);
+  const token = gerarToken(usuario.id, !!lembrar);
 
   registrarAuditoria({
     usuarioId: usuario.id, entidade: 'auth', entidadeId: usuario.id, acao: 'login',

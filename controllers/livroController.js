@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { construirOrdenacao, construirPaginacao } = require('../utils/listagem');
+const { normalizarBusca } = require('../utils/normalizarBusca');
 
 const COLUNAS_ORDENACAO = ['titulo', 'autor', 'tombo', 'disponivel', 'estante'];
 
@@ -11,8 +12,8 @@ exports.listar = async (req, res) => {
   const valores = [];
 
   if (busca) {
-    valores.push(`%${busca}%`);
-    condicoes.push(`(l.titulo ILIKE $${valores.length} OR l.autor ILIKE $${valores.length} OR l.tombo ILIKE $${valores.length})`);
+    valores.push(`%${normalizarBusca(busca)}%`);
+    condicoes.push(`(l.titulo_busca LIKE $${valores.length} OR l.autor_busca LIKE $${valores.length} OR LOWER(l.tombo) LIKE $${valores.length})`);
   }
   if (disponivel === 'true' || disponivel === 'false') {
     valores.push(disponivel === 'true');
@@ -82,9 +83,9 @@ exports.criar = async (req, res) => {
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO livros (tombo, titulo, autor, editora, ano_publicacao, paginas, estante, prateleira, genero_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [tombo, titulo, autor, editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null]
+      `INSERT INTO livros (tombo, titulo, titulo_busca, autor, autor_busca, editora, ano_publicacao, paginas, estante, prateleira, genero_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [tombo, titulo, normalizarBusca(titulo), autor, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -103,10 +104,10 @@ exports.atualizar = async (req, res) => {
   }
   try {
     const { rows } = await pool.query(
-      `UPDATE livros SET tombo=$1, titulo=$2, autor=$3, editora=$4, ano_publicacao=$5,
-                          paginas=$6, estante=$7, prateleira=$8, genero_id=$9
-       WHERE id=$10 RETURNING *`,
-      [tombo, titulo, autor, editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, req.params.id]
+      `UPDATE livros SET tombo=$1, titulo=$2, titulo_busca=$3, autor=$4, autor_busca=$5, editora=$6, ano_publicacao=$7,
+                          paginas=$8, estante=$9, prateleira=$10, genero_id=$11
+       WHERE id=$12 RETURNING *`,
+      [tombo, titulo, normalizarBusca(titulo), autor, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ erro: 'Livro não encontrado' });
     res.json(rows[0]);

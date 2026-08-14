@@ -1,4 +1,10 @@
 const pool = require('../config/db');
+const { diasAtras, inicioDoMesAtras } = require('../utils/dataAtras');
+
+// SQLite não tem to_char/date_trunc — strftime já devolve 'YYYY-MM' direto.
+const EXPRESSAO_MES = pool.usaSqlite
+  ? "strftime('%Y-%m', data_emprestimo)"
+  : "to_char(date_trunc('month', data_emprestimo), 'YYYY-MM')";
 
 // Gera os últimos `n` meses no formato 'YYYY-MM', do mais antigo pro mais recente,
 // pra garantir que o gráfico tenha um ponto por mês mesmo sem empréstimos registrados.
@@ -19,9 +25,9 @@ exports.resumo = async (req, res) => {
   const consultas = [
     // 0: empréstimos por mês (últimos 12 meses)
     pool.query(`
-      SELECT to_char(date_trunc('month', data_emprestimo), 'YYYY-MM') AS mes, COUNT(*)::int AS total
+      SELECT ${EXPRESSAO_MES} AS mes, COUNT(*)::int AS total
       FROM emprestimos
-      WHERE data_emprestimo >= date_trunc('month', CURRENT_DATE) - INTERVAL '11 months'
+      WHERE data_emprestimo >= ${inicioDoMesAtras(11)}
       GROUP BY 1
       ORDER BY 1
     `),
@@ -139,7 +145,7 @@ exports.resumo = async (req, res) => {
       pool.query(`
         SELECT acao, COUNT(*)::int AS total
         FROM log_auditoria
-        WHERE criado_em >= CURRENT_DATE - INTERVAL '30 days'
+        WHERE criado_em >= ${diasAtras(30)}
         GROUP BY acao
         ORDER BY total DESC
         LIMIT 10
@@ -149,7 +155,7 @@ exports.resumo = async (req, res) => {
         SELECT u.nome, COUNT(*)::int AS total
         FROM log_auditoria la
         JOIN users u ON u.id = la.usuario_id
-        WHERE la.criado_em >= CURRENT_DATE - INTERVAL '30 days'
+        WHERE la.criado_em >= ${diasAtras(30)}
         GROUP BY u.nome
         ORDER BY total DESC
         LIMIT 10

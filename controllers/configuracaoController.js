@@ -52,7 +52,7 @@ exports.atualizar = async (req, res) => {
        dias_emprestimo_padrao=$7, limite_livros_por_aluno=$8,
        login_max_tentativas=$9, login_bloqueio_minutos=$10, auditoria_retencao_dias=$11,
        permitir_acesso_rede=$12,
-       atualizado_em=NOW(), atualizado_por=$13
+       atualizado_em=CURRENT_TIMESTAMP, atualizado_por=$13
      WHERE id = 1 RETURNING *`,
     [
       nome_biblioteca, cor_primaria, cor_menu, cor_login, cor_botoes, logo_data_url || null,

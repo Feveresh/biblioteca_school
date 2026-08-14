@@ -3,6 +3,7 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
+const { normalizarBusca } = require('../utils/normalizarBusca');
 
 const ADMIN = { nome: 'Administrador', email: 'admin@biblioteca.com', senha: 'admin123' };
 
@@ -43,9 +44,9 @@ async function seed() {
 
     for (const livro of LIVROS) {
       await client.query(
-        `INSERT INTO livros (tombo, titulo, autor) VALUES ($1, $2, $3)
+        `INSERT INTO livros (tombo, titulo, autor, titulo_busca, autor_busca) VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (tombo) DO NOTHING`,
-        [livro.tombo, livro.titulo, livro.autor]
+        [livro.tombo, livro.titulo, livro.autor, normalizarBusca(livro.titulo), normalizarBusca(livro.autor)]
       );
     }
     console.log(`✅ ${LIVROS.length} livros de exemplo garantidos.`);
@@ -59,7 +60,10 @@ async function seed() {
         'SELECT id FROM alunos WHERE nome = $1 AND turma_id = $2', [aluno.nome, turmaRows[0].id]
       );
       if (!existe.rows[0]) {
-        await client.query('INSERT INTO alunos (nome, turma_id) VALUES ($1, $2)', [aluno.nome, turmaRows[0].id]);
+        await client.query(
+          'INSERT INTO alunos (nome, turma_id, nome_busca) VALUES ($1, $2, $3)',
+          [aluno.nome, turmaRows[0].id, normalizarBusca(aluno.nome)]
+        );
       }
     }
     console.log(`✅ ${ALUNOS.length} alunos de exemplo garantidos.`);

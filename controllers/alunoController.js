@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { construirOrdenacao, construirPaginacao } = require('../utils/listagem');
+const { normalizarBusca } = require('../utils/normalizarBusca');
 
 const COLUNAS_ORDENACAO = ['nome'];
 
@@ -11,8 +12,8 @@ exports.listar = async (req, res) => {
   const valores = [];
 
   if (busca) {
-    valores.push(`%${busca}%`);
-    condicoes.push(`(a.nome ILIKE $${valores.length} OR t.nome ILIKE $${valores.length})`);
+    valores.push(`%${normalizarBusca(busca)}%`);
+    condicoes.push(`(a.nome_busca LIKE $${valores.length} OR LOWER(t.nome) LIKE $${valores.length})`);
   }
   if (turma_id) {
     valores.push(turma_id);
@@ -63,8 +64,8 @@ exports.criar = async (req, res) => {
   if (!nome) return res.status(400).json({ erro: 'Nome é obrigatório' });
   try {
     const { rows } = await pool.query(
-      'INSERT INTO alunos (nome, turma_id) VALUES ($1, $2) RETURNING *',
-      [nome, turma_id || null]
+      'INSERT INTO alunos (nome, nome_busca, turma_id) VALUES ($1, $2, $3) RETURNING *',
+      [nome, normalizarBusca(nome), turma_id || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -78,8 +79,8 @@ exports.atualizar = async (req, res) => {
   if (!nome) return res.status(400).json({ erro: 'Nome é obrigatório' });
   try {
     const { rows } = await pool.query(
-      'UPDATE alunos SET nome=$1, turma_id=$2 WHERE id=$3 RETURNING *',
-      [nome, turma_id || null, req.params.id]
+      'UPDATE alunos SET nome=$1, nome_busca=$2, turma_id=$3 WHERE id=$4 RETURNING *',
+      [nome, normalizarBusca(nome), turma_id || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ erro: 'Aluno não encontrado' });
     res.json(rows[0]);

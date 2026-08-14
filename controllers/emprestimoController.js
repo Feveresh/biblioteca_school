@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { construirOrdenacao, construirPaginacao } = require('../utils/listagem');
+const { somarDias } = require('../utils/dataAtras');
 
 const COLUNAS_ORDENACAO = ['data_emprestimo', 'data_prevista'];
 
@@ -160,7 +161,7 @@ exports.renovar = async (req, res) => {
 
   const { rows } = await pool.query(
     `UPDATE emprestimos
-     SET data_prevista = (data_prevista + ($1 || ' days')::interval)::date
+     SET data_prevista = ${somarDias('data_prevista', '$1')}
      WHERE id = $2 RETURNING *`,
     [dias, id]
   );

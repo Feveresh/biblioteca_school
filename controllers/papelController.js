@@ -1,27 +1,46 @@
 const pool = require('../config/db');
 
-const SELECT_PAPEL = `
-  SELECT r.*, COALESCE(array_agg(rp.permissao_codigo) FILTER (WHERE rp.permissao_codigo IS NOT NULL), '{}') AS permissoes
-  FROM roles r
-  LEFT JOIN role_permissoes rp ON rp.role_id = r.id
-`;
+// SQLite não tem array_agg nem tipo array — group_concat devolve string separada por
+// vírgula (e já ignora NULL sozinho, sem precisar de FILTER) em vez de um array real.
+const SELECT_PAPEL = pool.usaSqlite
+  ? `
+    SELECT r.*, group_concat(rp.permissao_codigo) AS permissoes
+    FROM roles r
+    LEFT JOIN role_permissoes rp ON rp.role_id = r.id
+  `
+  : `
+    SELECT r.*, COALESCE(array_agg(rp.permissao_codigo) FILTER (WHERE rp.permissao_codigo IS NOT NULL), '{}') AS permissoes
+    FROM roles r
+    LEFT JOIN role_permissoes rp ON rp.role_id = r.id
+  `;
+
+// No Postgres `permissoes` já vem como array (driver `pg` desserializa sozinho); no SQLite
+// vem como string "a,b,c" ou null (nenhuma permissão) — normaliza pro mesmo formato.
+function normalizarPermissoes(row) {
+  if (pool.usaSqlite) {
+    row.permissoes = row.permissoes ? row.permissoes.split(',') : [];
+  }
+  return row;
+}
 
 exports.listar = async (req, res) => {
   const { rows } = await pool.query(`${SELECT_PAPEL} GROUP BY r.id ORDER BY r.nome`);
-  res.json(rows);
+  res.json(rows.map(normalizarPermissoes));
 };
 
 exports.buscar = async (req, res) => {
   const { rows } = await pool.query(`${SELECT_PAPEL} WHERE r.id = $1 GROUP BY r.id`, [req.params.id]);
   if (!rows[0]) return res.status(404).json({ erro: 'Papel não encontrado' });
-  res.json(rows[0]);
+  res.json(normalizarPermissoes(rows[0]));
 };
 
 // A tabela `permissoes` é a fonte da verdade do catálogo válido (populada pelas migrations) —
 // validar contra ela evita duplicar essa lista em código e ela nunca fica fora de sincronia.
+// IN (...) dinâmico funciona igual nos dois motores — evita o "ANY($1::array)", exclusivo do Postgres.
 async function permissoesInvalidas(client, codigos) {
   if (!codigos || !codigos.length) return [];
-  const { rows } = await client.query('SELECT codigo FROM permissoes WHERE codigo = ANY($1::varchar[])', [codigos]);
+  const placeholders = codigos.map((_, i) => `$${i + 1}`).join(',');
+  const { rows } = await client.query(`SELECT codigo FROM permissoes WHERE codigo IN (${placeholders})`, codigos);
   const validos = new Set(rows.map(r => r.codigo));
   return codigos.filter(c => !validos.has(c));
 }

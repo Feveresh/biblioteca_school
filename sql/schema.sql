@@ -80,7 +80,9 @@ CREATE TABLE livros (
   id              SERIAL PRIMARY KEY,
   tombo           VARCHAR(20) UNIQUE NOT NULL,  -- número do carimbo
   titulo          VARCHAR(200) NOT NULL,
+  titulo_busca    VARCHAR(200),  -- normalizado (minúsculas, sem acento) p/ busca
   autor           VARCHAR(150),
+  autor_busca     VARCHAR(150),
   editora         VARCHAR(150),
   ano_publicacao  SMALLINT CHECK (ano_publicacao IS NULL OR ano_publicacao BETWEEN 1400 AND 2100),
   paginas         SMALLINT CHECK (paginas IS NULL OR paginas > 0),
@@ -101,6 +103,7 @@ CREATE TABLE turmas (
 CREATE TABLE alunos (
   id         SERIAL PRIMARY KEY,
   nome       VARCHAR(150) NOT NULL,
+  nome_busca VARCHAR(150),  -- normalizado (minúsculas, sem acento) p/ busca
   turma_id   INT REFERENCES turmas(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -186,4 +189,5 @@ INSERT INTO schema_migrations (nome) VALUES
   ('011_turma_catalogo.sql'),
   ('012_livro_paginas.sql'),
   ('013_acesso_rede.sql'),
-  ('014_versao_sistema.sql');
+  ('014_versao_sistema.sql'),
+  ('015_colunas_busca_normalizada.sql');

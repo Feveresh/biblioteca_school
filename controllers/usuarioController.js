@@ -86,7 +86,7 @@ exports.redefinirSenha = async (req, res) => {
   const senhaHash = await bcrypt.hash(senha, 10);
   // Redefinir senha também revoga sessões ativas desse usuário (mesmo mecanismo do logout).
   const { rowCount } = await pool.query(
-    'UPDATE users SET senha_hash=$1, tokens_validos_apos = NOW() WHERE id=$2',
+    'UPDATE users SET senha_hash=$1, tokens_validos_apos = CURRENT_TIMESTAMP WHERE id=$2',
     [senhaHash, req.params.id]
   );
   if (!rowCount) return res.status(404).json({ erro: 'Usuário não encontrado' });

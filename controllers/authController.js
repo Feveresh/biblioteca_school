@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const { buscarUsuarioAutenticado, formatarUsuario } = require('../utils/usuarioAuth');
 const { registrar: registrarAuditoria } = require('../utils/auditoria');
+const { minutosAtras } = require('../utils/dataAtras');
 
 const TOKEN_EXPIRA_EM = '8h';
 
@@ -31,8 +32,8 @@ exports.login = async (req, res) => {
   const { login_max_tentativas: maxTentativas, login_bloqueio_minutos: bloqueioMinutos } = cfgRows[0];
 
   const { rows: falhasRows } = await pool.query(
-    `SELECT COUNT(*) FROM login_tentativas
-     WHERE email = $1 AND sucesso = false AND criado_em > NOW() - ($2 || ' minutes')::interval`,
+    `SELECT COUNT(*) as count FROM login_tentativas
+     WHERE email = $1 AND sucesso = false AND criado_em > ${minutosAtras('$2')}`,
     [email, bloqueioMinutos]
   );
   if (Number(falhasRows[0].count) >= maxTentativas) {
@@ -70,7 +71,7 @@ exports.login = async (req, res) => {
 
 // POST /api/auth/logout — revoga todos os tokens emitidos até agora para este usuário
 exports.logout = async (req, res) => {
-  await pool.query('UPDATE users SET tokens_validos_apos = NOW() WHERE id = $1', [req.usuario.id]);
+  await pool.query('UPDATE users SET tokens_validos_apos = CURRENT_TIMESTAMP WHERE id = $1', [req.usuario.id]);
 
   registrarAuditoria({
     usuarioId: req.usuario.id, entidade: 'auth', entidadeId: req.usuario.id, acao: 'logout',

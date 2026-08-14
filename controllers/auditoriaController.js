@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { diasAtras } = require('../utils/dataAtras');
 
 // Limpeza "oportunista": sem timer (o processo pode rodar serverless e não sobreviver
 // entre invocações) — dispara no máximo 1x por dia, na primeira consulta à tela de auditoria.
@@ -13,10 +14,10 @@ async function limpezaOportunista() {
   if (cfg.auditoria_ultima_limpeza && new Date(cfg.auditoria_ultima_limpeza) > umDiaAtras) return;
 
   await pool.query(
-    `DELETE FROM log_auditoria WHERE criado_em < NOW() - ((($1)::text) || ' days')::interval`,
+    `DELETE FROM log_auditoria WHERE criado_em < ${diasAtras('$1')}`,
     [cfg.auditoria_retencao_dias]
   );
-  await pool.query('UPDATE configuracoes SET auditoria_ultima_limpeza = NOW() WHERE id = 1');
+  await pool.query('UPDATE configuracoes SET auditoria_ultima_limpeza = CURRENT_TIMESTAMP WHERE id = 1');
 }
 
 // GET /api/auditoria?entidade=&usuario_id=&acao=&de=&ate=&pagina=&porPagina=
@@ -50,6 +51,15 @@ exports.listar = async (req, res) => {
     ORDER BY l.criado_em DESC
     LIMIT $${valoresPagina.length - 1} OFFSET $${valoresPagina.length}
   `, valoresPagina);
+
+  // Postgres (JSONB) já devolve dados_antes/dados_depois como objeto; SQLite (coluna TEXT)
+  // devolve a string crua gravada por utils/auditoria.js — precisa desserializar aqui.
+  if (pool.usaSqlite) {
+    for (const linha of rows) {
+      if (typeof linha.dados_antes === 'string') linha.dados_antes = JSON.parse(linha.dados_antes);
+      if (typeof linha.dados_depois === 'string') linha.dados_depois = JSON.parse(linha.dados_depois);
+    }
+  }
 
   res.json({ dados: rows, total, pagina, porPagina });
 };

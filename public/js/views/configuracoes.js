@@ -1,5 +1,5 @@
 import { api, getUsuario } from '../api.js';
-import { mostrarToast, escapeHtml, debounce } from '../utils.js';
+import { mostrarToast, escapeHtml, debounce, confirmar } from '../utils.js';
 import { aplicarIdentidadeVisual, atualizarCacheIdentidadeVisual } from '../identidadeVisual.js';
 import { temaAtual, alternarTema } from '../tema.js';
 
@@ -138,6 +138,31 @@ export default async function renderConfiguracoes(container) {
             </div>
           </div>
         </div>
+
+        ${config.motorBanco === 'sqlite' && podeEditar ? `
+          <div class="painel">
+            <h2>Migrar para PostgreSQL</h2>
+            <p class="sub" style="margin:0 0 14px;">
+              O sistema está usando SQLite (arquivo local, sem instalação extra). Se a escola tiver um
+              servidor PostgreSQL na rede — recomendado quando vários computadores acessam o sistema ao
+              mesmo tempo — você pode migrar todos os dados pra lá. O SQLite só é apagado depois que a
+              cópia é conferida com sucesso, e um backup de segurança é criado antes de apagar.
+            </p>
+            <div class="form-linha">
+              <div class="campo" style="flex:1;">
+                <label for="f-migracao-url">URL de conexão do PostgreSQL de destino</label>
+                <input type="text" id="f-migracao-url" placeholder="postgresql://usuario:senha@host:5432/banco" autocomplete="off">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+              <button type="button" id="btn-migracao-testar" class="btn btn-secondary btn-sm">Testar conexão</button>
+              <button type="button" id="btn-migracao-copiar" class="btn btn-secondary btn-sm">Copiar dados</button>
+              <button type="button" id="btn-migracao-finalizar" class="btn btn-danger btn-sm" disabled>Finalizar migração</button>
+            </div>
+            <p id="migracao-status" class="sub" style="margin-top:10px;min-height:16px;"></p>
+            <div id="migracao-relatorio"></div>
+          </div>
+        ` : ''}
       </div>
 
       <p id="config-erro" class="mensagem-erro hidden"></p>
@@ -250,4 +275,90 @@ export default async function renderConfiguracoes(container) {
   });
 
   container.querySelector('#f-acesso-rede').addEventListener('change', salvar);
+
+  // Migração SQLite → PostgreSQL — só existe no DOM quando motorBanco === 'sqlite'.
+  const urlMigracaoInput = container.querySelector('#f-migracao-url');
+  if (urlMigracaoInput) {
+    const statusMigracao = container.querySelector('#migracao-status');
+    const relatorioMigracao = container.querySelector('#migracao-relatorio');
+    const btnTestar = container.querySelector('#btn-migracao-testar');
+    const btnCopiar = container.querySelector('#btn-migracao-copiar');
+    const btnFinalizar = container.querySelector('#btn-migracao-finalizar');
+
+    function pegarUrlOuAvisar() {
+      const url = urlMigracaoInput.value.trim();
+      if (!url) mostrarToast('Informe a URL de conexão do PostgreSQL de destino.', 'erro');
+      return url || null;
+    }
+
+    // Qualquer mudança na URL invalida uma cópia anterior — evita finalizar com base num
+    // relatório que não corresponde mais ao destino digitado no campo.
+    urlMigracaoInput.addEventListener('input', () => { btnFinalizar.disabled = true; });
+
+    btnTestar.addEventListener('click', async () => {
+      const url = pegarUrlOuAvisar();
+      if (!url) return;
+      statusMigracao.textContent = 'Testando conexão...';
+      try {
+        await api.post('/api/migracao/testar', { connectionString: url });
+        statusMigracao.textContent = '✓ Conexão bem-sucedida.';
+      } catch (err) {
+        statusMigracao.textContent = '';
+        mostrarToast(err.message, 'erro');
+      }
+    });
+
+    btnCopiar.addEventListener('click', async () => {
+      const url = pegarUrlOuAvisar();
+      if (!url) return;
+      btnFinalizar.disabled = true;
+      btnCopiar.disabled = true;
+      statusMigracao.textContent = 'Copiando dados — isso pode levar alguns segundos...';
+      relatorioMigracao.innerHTML = '';
+      try {
+        const { relatorio } = await api.post('/api/migracao/copiar', { connectionString: url });
+        statusMigracao.textContent = '✓ Cópia concluída. Confira o relatório antes de finalizar.';
+        relatorioMigracao.innerHTML = `
+          <div class="tabela-wrap" style="margin-top:10px;box-shadow:none;border:none;">
+            <table>
+              <thead><tr><th>Tabela</th><th>Linhas copiadas</th></tr></thead>
+              <tbody>
+                ${relatorio.map(r => `<tr><td>${escapeHtml(r.tabela)}</td><td>${r.destino} / ${r.origem}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        btnFinalizar.disabled = false;
+      } catch (err) {
+        statusMigracao.textContent = '';
+        mostrarToast(err.message, 'erro');
+      } finally {
+        btnCopiar.disabled = false;
+      }
+    });
+
+    btnFinalizar.addEventListener('click', async () => {
+      const url = pegarUrlOuAvisar();
+      if (!url) return;
+      const ok = await confirmar(
+        'Isso vai apagar todos os dados do SQLite local (com backup de segurança criado antes) e trocar o sistema para usar o PostgreSQL informado. Depois disso é preciso reiniciar o sistema. Tem certeza?',
+        { titulo: 'Finalizar migração para PostgreSQL', textoConfirmar: 'Sim, finalizar', perigo: true }
+      );
+      if (!ok) return;
+
+      btnFinalizar.disabled = true;
+      btnCopiar.disabled = true;
+      statusMigracao.textContent = 'Finalizando — apagando dados do SQLite e atualizando configuração...';
+      try {
+        const resultado = await api.post('/api/migracao/finalizar', { connectionString: url });
+        statusMigracao.textContent = `✓ ${resultado.mensagem}`;
+        mostrarToast('Migração concluída! Reinicie o sistema para usar o PostgreSQL.', 'sucesso');
+      } catch (err) {
+        statusMigracao.textContent = '';
+        mostrarToast(err.message, 'erro');
+        btnCopiar.disabled = false;
+        btnFinalizar.disabled = false;
+      }
+    });
+  }
 }

@@ -30,6 +30,7 @@ app.use('/api/papeis',        autenticar, autorizar('papeis.gerenciar'),   requi
 app.use('/api/usuarios',      autenticar, autorizar('usuarios.gerenciar'), require('./routes/usuarios'));
 app.use('/api/auditoria',     autenticar, autorizar('auditoria.ver'),      require('./routes/auditoria'));
 app.use('/api/configuracoes', autenticar, require('./routes/configuracoes'));
+app.use('/api/migracao',      autenticar, require('./routes/migracao'));
 
 app.use('/api', notFound);
 app.use(errorHandler);

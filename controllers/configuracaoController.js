@@ -18,6 +18,7 @@ exports.buscar = async (req, res) => {
   const ipRede = enderecoRede();
   res.json({
     ...rows[0],
+    motorBanco: pool.usaSqlite ? 'sqlite' : 'postgres',
     enderecos: {
       local: `http://localhost:${porta}`,
       rede: ipRede ? `http://${ipRede}:${porta}` : null,

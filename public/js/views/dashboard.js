@@ -12,36 +12,66 @@ export default async function renderDashboard(container) {
       </div>
     </div>
 
-    <div class="grid-stats">
-      <div class="stat-card">
-        <div class="stat-icone">📚</div>
-        <div class="stat-valor">${dados.livros.total}</div>
-        <div class="stat-label">Livros no acervo</div>
+    <div class="dashboard-secao">
+      <h2>📚 Livros</h2>
+      <div class="grid-stats">
+        <div class="stat-card">
+          <div class="stat-icone">📚</div>
+          <div class="stat-valor">${dados.livros.total}</div>
+          <div class="stat-label">Livros no acervo</div>
+        </div>
+        <div class="stat-card sucesso">
+          <div class="stat-icone">✅</div>
+          <div class="stat-valor">${dados.livros.disponiveis}</div>
+          <div class="stat-label">Livros disponíveis</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icone">📤</div>
+          <div class="stat-valor">${dados.livros.emprestados}</div>
+          <div class="stat-label">Livros emprestados</div>
+        </div>
       </div>
-      <div class="stat-card sucesso">
-        <div class="stat-icone">✅</div>
-        <div class="stat-valor">${dados.livros.disponiveis}</div>
-        <div class="stat-label">Livros disponíveis</div>
+    </div>
+
+    <div class="dashboard-secao">
+      <h2>🎓 Alunos</h2>
+      <div class="grid-stats">
+        <div class="stat-card">
+          <div class="stat-icone">🎓</div>
+          <div class="stat-valor">${dados.alunos.total}</div>
+          <div class="stat-label">Alunos cadastrados</div>
+        </div>
+        <div class="stat-card aviso">
+          <div class="stat-icone">⏳</div>
+          <div class="stat-valor">${dados.alunos.comPendente}</div>
+          <div class="stat-label">Alunos com empréstimos pendentes</div>
+        </div>
+        <div class="stat-card perigo">
+          <div class="stat-icone">⚠️</div>
+          <div class="stat-valor">${dados.alunos.comAtrasado}</div>
+          <div class="stat-label">Alunos com empréstimo atrasado</div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icone">📤</div>
-        <div class="stat-valor">${dados.livros.emprestados}</div>
-        <div class="stat-label">Livros emprestados</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icone">🎓</div>
-        <div class="stat-valor">${dados.alunos.total}</div>
-        <div class="stat-label">Alunos cadastrados</div>
-      </div>
-      <div class="stat-card aviso">
-        <div class="stat-icone">⏳</div>
-        <div class="stat-valor">${dados.emprestimos.pendentes}</div>
-        <div class="stat-label">Empréstimos pendentes</div>
-      </div>
-      <div class="stat-card perigo">
-        <div class="stat-icone">⚠️</div>
-        <div class="stat-valor">${dados.emprestimos.atrasados}</div>
-        <div class="stat-label">Empréstimos atrasados</div>
+    </div>
+
+    <div class="dashboard-secao">
+      <h2>🔄 Empréstimos</h2>
+      <div class="grid-stats">
+        <div class="stat-card aviso">
+          <div class="stat-icone">⏳</div>
+          <div class="stat-valor">${dados.emprestimos.pendentes}</div>
+          <div class="stat-label">Empréstimos pendentes</div>
+        </div>
+        <div class="stat-card perigo">
+          <div class="stat-icone">⚠️</div>
+          <div class="stat-valor">${dados.emprestimos.atrasados}</div>
+          <div class="stat-label">Empréstimos atrasados</div>
+        </div>
+        <div class="stat-card sucesso">
+          <div class="stat-icone">✅</div>
+          <div class="stat-valor">${dados.emprestimos.devolvidos}</div>
+          <div class="stat-label">Empréstimos devolvidos</div>
+        </div>
       </div>
     </div>
 

@@ -13,7 +13,9 @@ exports.resumo = async (req, res) => {
       SELECT
         COUNT(*) FILTER (WHERE status = 'pendente' AND data_prevista >= CURRENT_DATE)::int AS pendentes,
         COUNT(*) FILTER (WHERE status = 'pendente' AND data_prevista < CURRENT_DATE)::int AS atrasados,
-        COUNT(*) FILTER (WHERE status = 'devolvido')::int AS devolvidos
+        COUNT(*) FILTER (WHERE status = 'devolvido')::int AS devolvidos,
+        COUNT(DISTINCT aluno_id) FILTER (WHERE status = 'pendente' AND data_prevista >= CURRENT_DATE)::int AS alunos_pendentes,
+        COUNT(DISTINCT aluno_id) FILTER (WHERE status = 'pendente' AND data_prevista < CURRENT_DATE)::int AS alunos_atrasados
       FROM emprestimos
     `),
     pool.query(`
@@ -32,8 +34,16 @@ exports.resumo = async (req, res) => {
       disponiveis: livros.rows[0].disponiveis,
       emprestados: livros.rows[0].total - livros.rows[0].disponiveis,
     },
-    alunos: { total: alunos.rows[0].total },
-    emprestimos: emprestimos.rows[0],
+    alunos: {
+      total: alunos.rows[0].total,
+      comPendente: emprestimos.rows[0].alunos_pendentes,
+      comAtrasado: emprestimos.rows[0].alunos_atrasados,
+    },
+    emprestimos: {
+      pendentes: emprestimos.rows[0].pendentes,
+      atrasados: emprestimos.rows[0].atrasados,
+      devolvidos: emprestimos.rows[0].devolvidos,
+    },
     ultimosEmprestimos: ultimos.rows,
   });
 };

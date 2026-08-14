@@ -455,12 +455,20 @@ label.toggle {
 }
 
 /* ---------- Cards / Dashboard ---------- */
+.dashboard-secao { margin-bottom: 28px; }
+.dashboard-secao h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+}
 .grid-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
   margin-bottom: 28px;
 }
+.dashboard-secao .grid-stats { margin-bottom: 0; }
 .stat-card {
   background: var(--color-surface);
   border-radius: var(--radius);

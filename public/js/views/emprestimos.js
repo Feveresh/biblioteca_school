@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escapeHtml, mostrarToast, formatarData, confirmar, exportarCSV, imprimirTabela } from '../utils.js';
+import { escapeHtml, mostrarToast, formatarData, confirmar, exportarCSV, imprimirTabela, debounce } from '../utils.js';
 
 export default async function renderEmprestimos(container) {
   container.innerHTML = `
@@ -13,13 +13,17 @@ export default async function renderEmprestimos(container) {
     <div class="painel">
       <h2>Novo empréstimo</h2>
       <form id="form-emprestimo" class="form-linha">
-        <div class="campo">
-          <label for="f-aluno">Aluno</label>
-          <select id="f-aluno" required></select>
+        <div class="campo campo-autocomplete">
+          <label for="f-aluno-busca">Aluno</label>
+          <input type="text" id="f-aluno-busca" placeholder="Digite o nome do aluno…" autocomplete="off" required>
+          <input type="hidden" id="f-aluno-id">
+          <div class="autocomplete-lista hidden" id="f-aluno-lista"></div>
         </div>
-        <div class="campo">
-          <label for="f-livro">Livro disponível</label>
-          <select id="f-livro" required></select>
+        <div class="campo campo-autocomplete">
+          <label for="f-livro-busca">Livro disponível</label>
+          <input type="text" id="f-livro-busca" placeholder="Digite o título, autor ou tombo…" autocomplete="off" required>
+          <input type="hidden" id="f-livro-id">
+          <div class="autocomplete-lista hidden" id="f-livro-lista"></div>
         </div>
         <div class="campo">
           <label for="f-data-prevista">Devolução prevista</label>
@@ -60,8 +64,12 @@ export default async function renderEmprestimos(container) {
     <div class="toolbar" id="paginacao" style="justify-content:flex-end;margin-top:14px;"></div>
   `;
 
-  const selectAluno = container.querySelector('#f-aluno');
-  const selectLivro = container.querySelector('#f-livro');
+  const inputAlunoBusca = container.querySelector('#f-aluno-busca');
+  const inputAlunoId = container.querySelector('#f-aluno-id');
+  const listaAluno = container.querySelector('#f-aluno-lista');
+  const inputLivroBusca = container.querySelector('#f-livro-busca');
+  const inputLivroId = container.querySelector('#f-livro-id');
+  const listaLivro = container.querySelector('#f-livro-lista');
   const inputData = container.querySelector('#f-data-prevista');
   const tbody = container.querySelector('#tbody-emprestimos');
   const erroEl = container.querySelector('#emprestimo-erro');
@@ -95,21 +103,121 @@ export default async function renderEmprestimos(container) {
     });
   }
 
-  async function carregarSelects() {
-    const [{ dados: alunos }, { dados: livros }] = await Promise.all([
-      api.get('/api/alunos?porPagina=500'),
-      api.get('/api/livros?disponivel=true&porPagina=500'),
-    ]);
-    selectAluno.innerHTML = alunos.length
-      ? alunos.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}${a.turma_nome ? ' — ' + escapeHtml(a.turma_nome) : ''}</option>`).join('')
-      : '<option value="">Nenhum aluno cadastrado</option>';
-    selectLivro.innerHTML = livros.length
-      ? livros.map(l => `<option value="${l.id}">${escapeHtml(l.titulo)} (${escapeHtml(l.tombo)})</option>`).join('')
-      : '<option value="">Nenhum livro disponível</option>';
-
+  async function carregarFiltroAluno() {
+    const { dados: alunos } = await api.get('/api/alunos?porPagina=500');
     filtroAluno.innerHTML = '<option value="">Aluno (todos)</option>'
       + alunos.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join('');
   }
+
+  // Campo de texto com busca (debounce) em vez de <select> — evita listas longas demais em
+  // escolas com muitos alunos, e usa a busca normalizada (sem distinguir maiúscula/acento).
+  // Escolher um item preenche um id oculto (o que de fato é enviado no POST); digitar de
+  // novo depois de escolher invalida esse id, pra não submeter um id que não bate mais com
+  // o texto mostrado.
+  function configurarAutocomplete({ input, hiddenInput, listaEl, buscar, renderItem, textoItem }) {
+    let itens = [];
+    let indiceAtivo = -1;
+
+    function fechar() {
+      listaEl.classList.add('hidden');
+      listaEl.innerHTML = '';
+      itens = [];
+      indiceAtivo = -1;
+    }
+
+    function destacar(indice) {
+      indiceAtivo = indice;
+      listaEl.querySelectorAll('.autocomplete-item').forEach((el, i) => {
+        el.classList.toggle('ativo', i === indiceAtivo);
+      });
+    }
+
+    function selecionar(item) {
+      hiddenInput.value = item.id;
+      input.value = textoItem(item);
+      fechar();
+    }
+
+    function abrir() {
+      if (!itens.length) {
+        listaEl.innerHTML = '<div class="autocomplete-vazio">Nenhum resultado</div>';
+      } else {
+        listaEl.innerHTML = itens.map((item, i) => `<div class="autocomplete-item" data-indice="${i}">${renderItem(item)}</div>`).join('');
+        listaEl.querySelectorAll('.autocomplete-item').forEach(el => {
+          el.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // evita o "blur" do input antes do clique registrar
+            selecionar(itens[Number(el.dataset.indice)]);
+          });
+        });
+      }
+      listaEl.classList.remove('hidden');
+      indiceAtivo = -1;
+    }
+
+    async function pesquisar() {
+      hiddenInput.value = '';
+      itens = await buscar(input.value.trim());
+      abrir();
+    }
+
+    input.addEventListener('input', debounce(pesquisar, 300));
+    input.addEventListener('focus', pesquisar);
+    input.addEventListener('keydown', (e) => {
+      if (listaEl.classList.contains('hidden')) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        destacar(Math.min(indiceAtivo + 1, itens.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        destacar(Math.max(indiceAtivo - 1, 0));
+      } else if (e.key === 'Enter' && indiceAtivo >= 0) {
+        e.preventDefault();
+        selecionar(itens[indiceAtivo]);
+      } else if (e.key === 'Escape') {
+        fechar();
+      }
+    });
+    // Sem ciclo de vida de "desmontar" nessa SPA (a view some do DOM ao navegar pra outra
+    // tela) — o próprio listener se remove quando percebe que o campo não está mais na
+    // página, pra não acumular um ouvinte novo em document a cada vez que o usuário volta
+    // pra esta tela.
+    function fecharAoClicarFora(e) {
+      if (!document.contains(input)) {
+        document.removeEventListener('click', fecharAoClicarFora);
+        return;
+      }
+      if (!input.parentElement.contains(e.target)) fechar();
+    }
+    document.addEventListener('click', fecharAoClicarFora);
+
+    return {
+      limpar() { input.value = ''; hiddenInput.value = ''; fechar(); },
+    };
+  }
+
+  const autocompleteAluno = configurarAutocomplete({
+    input: inputAlunoBusca,
+    hiddenInput: inputAlunoId,
+    listaEl: listaAluno,
+    buscar: async (termo) => {
+      const { dados } = await api.get(`/api/alunos?porPagina=8${termo ? `&busca=${encodeURIComponent(termo)}` : ''}`);
+      return dados;
+    },
+    renderItem: a => `${escapeHtml(a.nome)}${a.turma_nome ? `<span class="sub">${escapeHtml(a.turma_nome)}</span>` : ''}`,
+    textoItem: a => a.nome,
+  });
+
+  const autocompleteLivro = configurarAutocomplete({
+    input: inputLivroBusca,
+    hiddenInput: inputLivroId,
+    listaEl: listaLivro,
+    buscar: async (termo) => {
+      const { dados } = await api.get(`/api/livros?disponivel=true&porPagina=8${termo ? `&busca=${encodeURIComponent(termo)}` : ''}`);
+      return dados;
+    },
+    renderItem: l => `${escapeHtml(l.titulo)}<span class="sub">${escapeHtml(l.autor || '—')} · Tombo ${escapeHtml(l.tombo)}</span>`,
+    textoItem: l => `${l.titulo} (${l.tombo})`,
+  });
 
   async function carregarTabela() {
     tbody.innerHTML = `<tr><td colspan="7" class="celula-vazia">Carregando…</td></tr>`;
@@ -234,15 +342,20 @@ export default async function renderEmprestimos(container) {
   container.querySelector('#form-emprestimo').addEventListener('submit', async (e) => {
     e.preventDefault();
     erroEl.classList.add('hidden');
-    if (!selectAluno.value || !selectLivro.value) return;
+    if (!inputAlunoId.value || !inputLivroId.value) {
+      erroEl.textContent = 'Escolha um aluno e um livro da lista de sugestões.';
+      erroEl.classList.remove('hidden');
+      return;
+    }
     try {
       await api.post('/api/emprestimos', {
-        aluno_id: Number(selectAluno.value),
-        livro_id: Number(selectLivro.value),
+        aluno_id: Number(inputAlunoId.value),
+        livro_id: Number(inputLivroId.value),
         data_prevista: inputData.value,
       });
       mostrarToast('Empréstimo registrado.', 'sucesso');
-      await carregarSelects();
+      autocompleteAluno.limpar();
+      autocompleteLivro.limpar();
       await carregarTabela();
     } catch (err) {
       erroEl.textContent = err.message;
@@ -262,7 +375,6 @@ export default async function renderEmprestimos(container) {
       try {
         await api.patch(`/api/emprestimos/${idDevolver}/devolver`);
         mostrarToast('Devolução registrada.', 'sucesso');
-        await carregarSelects();
         await carregarTabela();
       } catch (err) {
         mostrarToast(err.message, 'erro');
@@ -284,6 +396,6 @@ export default async function renderEmprestimos(container) {
     }
   });
 
-  await carregarSelects();
+  await carregarFiltroAluno();
   await carregarTabela();
 }

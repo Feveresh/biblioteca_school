@@ -125,6 +125,26 @@ input, select { font-family: inherit; }
   box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
+.campo-autocomplete { position: relative; }
+.autocomplete-lista {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.autocomplete-item { padding: 8px 12px; cursor: pointer; font-size: 14px; }
+.autocomplete-item .sub { display: block; font-size: 12px; color: var(--color-text-muted); }
+.autocomplete-item:hover, .autocomplete-item.ativo { background: var(--color-primary-soft); }
+.autocomplete-vazio { padding: 8px 12px; font-size: 13px; color: var(--color-text-muted); }
+
 .grupo-permissoes {
   border: 1px solid var(--color-border);
   border-radius: 8px;

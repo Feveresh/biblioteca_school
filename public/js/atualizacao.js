@@ -114,18 +114,15 @@ async function dispararAtualizacao() {
   }
 }
 
-// Chamado depois de um login bem-sucedido, só para quem tem permissão de administração.
-export async function verificarNoLogin() {
-  let disponivel;
+async function tentarVerificar() {
   try {
-    disponivel = await api.get('/api/atualizacao/verificar');
+    return await api.get('/api/atualizacao/verificar');
   } catch {
-    return;
+    return null;
   }
-  if (!disponivel.temAtualizacao) return;
+}
 
-  mostrarBotaoRodape(disponivel);
-
+function abrirModalNovaVersao(disponivel) {
   const corpo = abrirModal('Nova versão disponível', `
     <p>Uma nova versão do sistema está disponível: <strong>v${disponivel.versaoDisponivel}</strong>
     (versão atual: v${disponivel.versaoAtual}).</p>
@@ -146,4 +143,37 @@ function mostrarBotaoRodape(disponivel) {
   btnRodape.textContent = `Atualizar p/ v${disponivel.versaoDisponivel}`;
   btnRodape.classList.remove('hidden');
   btnRodape.onclick = () => dispararAtualizacao();
+}
+
+let intervaloChecagem = null;
+
+// Continua checando em segundo plano (silencioso) enquanto a sessão estiver aberta — sem
+// isso, quem loga de manhã e fica com o sistema aberto o dia inteiro só saberia de uma
+// atualização lançada à tarde no próximo login. Só atualiza o botão do rodapé, nunca reabre
+// o modal (esse já teve sua chance, uma vez, logo após o login) — e para de checar assim
+// que encontra alguma coisa, já que a partir daí não há mais nada novo pra descobrir.
+function iniciarChecagemPeriodica() {
+  if (intervaloChecagem) return;
+  intervaloChecagem = setInterval(async () => {
+    const disponivel = await tentarVerificar();
+    if (disponivel?.temAtualizacao) {
+      mostrarBotaoRodape(disponivel);
+      clearInterval(intervaloChecagem);
+      intervaloChecagem = null;
+    }
+  }, 60000);
+}
+
+// Chamado depois de um login bem-sucedido, só para quem tem permissão de administração.
+// A telinha (modal) só aparece aqui, uma vez — depois disso, qualquer atualização nova
+// encontrada (seja "Depois" nessa mesma checagem, seja pela checagem periódica) só acende
+// o botão no rodapé, sem interromper o que a pessoa está fazendo.
+export async function verificarNoLogin() {
+  const disponivel = await tentarVerificar();
+  if (disponivel?.temAtualizacao) {
+    mostrarBotaoRodape(disponivel);
+    abrirModalNovaVersao(disponivel);
+  } else {
+    iniciarChecagemPeriodica();
+  }
 }

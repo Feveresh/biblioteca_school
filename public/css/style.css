@@ -47,6 +47,7 @@
     --color-border: #2d3144;
     --color-border-hover: #3c4157;
     --color-row-hover: rgba(255, 255, 255, 0.04);
+    --color-primary-soft: #262a45;
     --color-danger-soft: #3a1620;
     --color-danger-soft-hover: #4a1c29;
     --color-success-soft: #123024;
@@ -62,6 +63,7 @@
   --color-border: #2d3144;
   --color-border-hover: #3c4157;
   --color-row-hover: rgba(255, 255, 255, 0.04);
+  --color-primary-soft: #262a45;
   --color-danger-soft: #3a1620;
   --color-danger-soft-hover: #4a1c29;
   --color-success-soft: #123024;

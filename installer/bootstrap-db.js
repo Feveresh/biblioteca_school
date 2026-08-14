@@ -1,13 +1,15 @@
 // Roda durante a instalação/atualização via Inno Setup (empacotado em scripts/ do app,
-// pra ter acesso ao node_modules já vendorizado — precisa de "pg" e "bcryptjs").
+// pra ter acesso ao node_modules já vendorizado — precisa de "bcryptjs" e, se algum dia
+// apontar pra PostgreSQL, também de "pg").
 //
-// - Instalação nova (.env ainda não existe): cria uma role e um banco dedicados no
-//   Postgres (usando a senha de administrador informada no instalador, disponível na
-//   variável de ambiente PG_SUPERUSER_SENHA), gera .env com credenciais só da app e um
-//   JWT_SECRET aleatório, e cria o usuário Admin inicial (senha aleatória, salva em
-//   LEIA-ME.txt).
+// - Instalação nova (.env ainda não existe): gera .env com JWT_SECRET aleatório — sem
+//   DATABASE_URL, então o sistema sobe em SQLite (arquivo "biblioteca.db" na pasta de
+//   instalação), sem precisar de nenhum banco externo instalado. Cria o usuário Admin
+//   inicial (senha aleatória, salva em LEIA-ME.txt).
 // - Atualização (.env já existe): não mexe em credenciais nem cria nada — só roda as
-//   migrations pendentes, preservando todos os dados reais.
+//   migrations pendentes, preservando todos os dados reais. Isso vale tanto pra quem
+//   está em SQLite quanto pra quem colocou um DATABASE_URL de PostgreSQL no .env antes
+//   de instalar/atualizar (uso avançado — o sistema respeita o que já estiver lá).
 //
 // Uso: node scripts/bootstrap-db.js
 const fs = require('fs');
@@ -19,50 +21,19 @@ const APP_DIR = path.join(__dirname, '..');
 const ENV_PATH = path.join(APP_DIR, '.env');
 const LEIA_ME_PATH = path.join(APP_DIR, 'LEIA-ME.txt');
 
-const APP_DB = 'biblioteca';
-const APP_ROLE = 'biblioteca_app';
-const PG_HOST = 'localhost';
-const PG_PORT = 5432;
-
 function senhaAleatoria(tamanho = 24) {
   return crypto.randomBytes(tamanho).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, tamanho);
 }
 
-async function criarBancoEUsuario() {
-  const { Client } = require('pg');
-  const senhaSuperuser = process.env.PG_SUPERUSER_SENHA;
-  if (!senhaSuperuser) {
-    throw new Error('PG_SUPERUSER_SENHA não informada — necessária pra criar o banco na primeira instalação.');
-  }
-
-  const admin = new Client({
-    host: PG_HOST, port: PG_PORT, user: 'postgres', password: senhaSuperuser, database: 'postgres',
-  });
-  await admin.connect();
-
-  const senhaApp = senhaAleatoria();
-  const { rows: papel } = await admin.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [APP_ROLE]);
-  if (papel.length) {
-    await admin.query(`ALTER ROLE ${APP_ROLE} WITH LOGIN PASSWORD '${senhaApp}'`);
-  } else {
-    await admin.query(`CREATE ROLE ${APP_ROLE} WITH LOGIN PASSWORD '${senhaApp}'`);
-  }
-
-  const { rows: banco } = await admin.query('SELECT 1 FROM pg_database WHERE datname = $1', [APP_DB]);
-  if (!banco.length) {
-    await admin.query(`CREATE DATABASE ${APP_DB} OWNER ${APP_ROLE}`);
-  }
-  await admin.end();
-
+function gerarEnvSqlite() {
   const jwtSecret = crypto.randomBytes(48).toString('hex');
   const conteudoEnv = [
-    `DATABASE_URL=postgresql://${APP_ROLE}:${senhaApp}@${PG_HOST}:${PG_PORT}/${APP_DB}`,
     `PORT=3303`,
     `JWT_SECRET=${jwtSecret}`,
     '',
   ].join('\n');
   fs.writeFileSync(ENV_PATH, conteudoEnv, 'utf8');
-  console.log('✅ .env gerado com credenciais dedicadas.');
+  console.log('✅ .env gerado (SQLite — sem necessidade de banco externo).');
 }
 
 async function criarAdminInicial() {
@@ -103,11 +74,9 @@ async function criarAdminInicial() {
 }
 
 async function main() {
-  const instalacaoNova = !fs.existsSync(ENV_PATH);
-
-  if (instalacaoNova) {
-    console.log('== Instalação nova: criando banco e credenciais ==');
-    await criarBancoEUsuario();
+  if (!fs.existsSync(ENV_PATH)) {
+    console.log('== Instalação nova: gerando configuração (SQLite) ==');
+    gerarEnvSqlite();
   } else {
     console.log('== Atualização: mantendo banco e credenciais existentes ==');
   }
@@ -117,7 +86,11 @@ async function main() {
     cwd: APP_DIR, stdio: 'inherit',
   });
 
-  if (instalacaoNova) await criarAdminInicial();
+  // Sempre chama, mesmo quando o .env já existia (ex: alguém pré-criou um .env com
+  // DATABASE_URL apontando pro próprio Postgres antes da primeira instalação) — a função
+  // já é idempotente sozinha (só cria se a tabela "users" estiver vazia), então cobre tanto
+  // a instalação nova em SQLite quanto esse caso avançado, sem deixar ninguém sem acesso.
+  await criarAdminInicial();
 }
 
 main().catch(err => {

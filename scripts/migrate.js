@@ -26,12 +26,30 @@ async function migrate() {
         console.log('✅ Schema SQLite criado (instalação nova).');
       }
     } else {
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS schema_migrations (
-          nome        VARCHAR(255) PRIMARY KEY,
-          aplicado_em TIMESTAMP NOT NULL DEFAULT NOW()
-        )
-      `);
+      // As migrations incrementais (sql/migrations/pg/) presumem uma linha de base que já
+      // existia antes desse sistema de migrations (ex: a tabela "users") — não bastam
+      // sozinhas pra um banco Postgres genuinamente vazio (uso avançado: apontar a
+      // instalação pra um Postgres novo em vez do SQLite padrão). Detecta esse caso pela
+      // ausência de QUALQUER tabela em "public" e usa o snapshot cumulativo completo
+      // (schema.sql — o mesmo caminho que uma instalação nova em Postgres já documentava),
+      // que já cria e semeia "schema_migrations" sozinho.
+      const { rows: tabelasExistentes } = await client.query(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' LIMIT 1"
+      );
+      if (!tabelasExistentes.length) {
+        const schemaCompleto = fs.readFileSync(
+          path.join(__dirname, '..', 'sql', 'schema.sql'), 'utf8'
+        );
+        await client.query(schemaCompleto);
+        console.log('✅ Schema PostgreSQL criado (instalação nova).');
+      } else {
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS schema_migrations (
+            nome        VARCHAR(255) PRIMARY KEY,
+            aplicado_em TIMESTAMP NOT NULL DEFAULT NOW()
+          )
+        `);
+      }
     }
 
     const executadas = await aplicarMigrations(client, DIR_MIGRATIONS);

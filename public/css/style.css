@@ -78,6 +78,22 @@ body {
   color: var(--color-text);
 }
 
+/* Scrollbar seguindo o tema — sem isso fica a barra branca padrão do sistema por cima do
+   modo escuro. scrollbar-color cobre Firefox; ::-webkit-scrollbar cobre Chrome/Edge/Safari. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-hover) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-hover);
+  border-radius: 8px;
+  border: 2px solid var(--color-bg);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: var(--color-text-muted); }
+
 .hidden { display: none !important; }
 
 button { font-family: inherit; cursor: pointer; }

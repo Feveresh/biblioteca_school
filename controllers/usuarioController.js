@@ -84,10 +84,12 @@ exports.redefinirSenha = async (req, res) => {
     return res.status(400).json({ erro: 'A senha deve ter ao menos 6 caracteres' });
   }
   const senhaHash = await bcrypt.hash(senha, 10);
-  // Redefinir senha também revoga sessões ativas desse usuário (mesmo mecanismo do logout).
+  // Redefinir senha também revoga sessões ativas desse usuário (mesmo mecanismo do logout —
+  // ver o comentário em controllers/authController.js sobre por que é new Date().toISOString()
+  // e não CURRENT_TIMESTAMP).
   const { rowCount } = await pool.query(
-    'UPDATE users SET senha_hash=$1, tokens_validos_apos = CURRENT_TIMESTAMP WHERE id=$2',
-    [senhaHash, req.params.id]
+    'UPDATE users SET senha_hash=$1, tokens_validos_apos = $2 WHERE id=$3',
+    [senhaHash, new Date().toISOString(), req.params.id]
   );
   if (!rowCount) return res.status(404).json({ erro: 'Usuário não encontrado' });
   res.locals.auditAcao = 'redefinir_senha';

@@ -75,7 +75,12 @@ exports.login = async (req, res) => {
 
 // POST /api/auth/logout — revoga todos os tokens emitidos até agora para este usuário
 exports.logout = async (req, res) => {
-  await pool.query('UPDATE users SET tokens_validos_apos = CURRENT_TIMESTAMP WHERE id = $1', [req.usuario.id]);
+  // Valor vindo do JS (não CURRENT_TIMESTAMP do banco): no SQLite, CURRENT_TIMESTAMP só tem
+  // precisão de segundo, enquanto "emitidoEm" (ver middleware/auth.js) é em milissegundos —
+  // um logout no mesmo segundo do login podia gravar um instante que parecia ANTERIOR ao
+  // token (ex: token emitido em X.782ms, revogação truncada pra X.000), deixando-o passar
+  // como válido. new Date().toISOString() tem a mesma precisão nos dois motores.
+  await pool.query('UPDATE users SET tokens_validos_apos = $1 WHERE id = $2', [new Date().toISOString(), req.usuario.id]);
 
   registrarAuditoria({
     usuarioId: req.usuario.id, entidade: 'auth', entidadeId: req.usuario.id, acao: 'logout',

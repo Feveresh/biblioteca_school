@@ -203,7 +203,7 @@ export default async function renderEmprestimos(container) {
       const { dados } = await api.get(`/api/alunos?porPagina=8${termo ? `&busca=${encodeURIComponent(termo)}` : ''}`);
       return dados;
     },
-    renderItem: a => `${escapeHtml(a.nome)}${a.turma_nome ? `<span class="sub">${escapeHtml(a.turma_nome)}</span>` : ''}`,
+    renderItem: a => `${escapeHtml(a.nome)}${a.turma_nome ? `<span class="autocomplete-item-detalhe">${escapeHtml(a.turma_nome)}</span>` : ''}`,
     textoItem: a => a.nome,
   });
 
@@ -215,7 +215,7 @@ export default async function renderEmprestimos(container) {
       const { dados } = await api.get(`/api/livros?disponivel=true&porPagina=8${termo ? `&busca=${encodeURIComponent(termo)}` : ''}`);
       return dados;
     },
-    renderItem: l => `${escapeHtml(l.titulo)}<span class="sub">${escapeHtml(l.autor || '—')} · Tombo ${escapeHtml(l.tombo)}</span>`,
+    renderItem: l => `${escapeHtml(l.titulo)}<span class="autocomplete-item-detalhe">${escapeHtml(l.autor || '—')} · Tombo ${escapeHtml(l.tombo)}</span>`,
     textoItem: l => `${l.titulo} (${l.tombo})`,
   });
 

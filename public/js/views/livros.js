@@ -98,11 +98,19 @@ export default async function renderLivros(container) {
       <div class="painel">
         <h2>Gêneros</h2>
         <p class="sub" style="margin:-8px 0 16px;">A cor escolhida aparece como fundo do gênero na lista de itens.</p>
-        <div id="lista-generos-cadastro"></div>
+        <div id="lista-generos-cadastro" class="grade-catalogo"></div>
+        <form id="form-novo-genero" class="form-catalogo-novo">
+          <input type="text" id="novo-genero-nome" placeholder="Nome do novo gênero">
+          <button type="submit" class="btn btn-secondary btn-sm">+ Adicionar</button>
+        </form>
       </div>
       <div class="painel">
         <h2>Tipos</h2>
-        <div id="lista-tipos-cadastro"></div>
+        <div id="lista-tipos-cadastro" class="grade-catalogo"></div>
+        <form id="form-novo-tipo" class="form-catalogo-novo">
+          <input type="text" id="novo-tipo-nome" placeholder="Nome do novo tipo">
+          <button type="submit" class="btn btn-secondary btn-sm">+ Adicionar</button>
+        </form>
       </div>
     </div>
   `;
@@ -164,10 +172,10 @@ export default async function renderLivros(container) {
       return;
     }
     el.innerHTML = generos.map(g => `
-      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border);">
-        <input type="color" data-cor-genero="${g.id}" value="${g.cor || '#94a3b8'}" title="Escolher cor" style="width:36px;height:28px;padding:0;border:1px solid var(--color-border);border-radius:6px;cursor:pointer;background:none;flex-shrink:0;">
+      <div class="item-catalogo">
+        <input type="color" data-cor-genero="${g.id}" value="${g.cor || '#94a3b8'}" title="Escolher cor" style="width:20px;height:20px;padding:0;border:none;border-radius:4px;cursor:pointer;background:none;flex-shrink:0;">
         <span class="badge" style="${g.cor ? `background:${g.cor};color:${corTextoContraste(g.cor)};` : 'background:var(--color-border);color:var(--color-text-muted);'}">${escapeHtml(g.nome)}</span>
-        ${g.cor ? `<button type="button" class="btn btn-secondary btn-sm" data-limpar-cor-genero="${g.id}">Sem cor</button>` : ''}
+        ${g.cor ? `<button type="button" data-limpar-cor-genero="${g.id}" title="Remover cor" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:14px;line-height:1;padding:0;">✕</button>` : ''}
       </div>
     `).join('');
   }
@@ -179,9 +187,7 @@ export default async function renderLivros(container) {
       el.innerHTML = '<p class="sub">Nenhum tipo cadastrado ainda.</p>';
       return;
     }
-    el.innerHTML = tipos.map(t => `
-      <div style="padding:8px 0;border-bottom:1px solid var(--color-border);">${escapeHtml(t.nome)}</div>
-    `).join('');
+    el.innerHTML = tipos.map(t => `<div class="item-catalogo">${escapeHtml(t.nome)}</div>`).join('');
   }
 
   async function alterarCorGenero(id, cor) {
@@ -194,6 +200,24 @@ export default async function renderLivros(container) {
     } catch (err) {
       mostrarToast(err.message, 'erro');
     }
+  }
+
+  async function adicionarGenero(nome) {
+    const novo = await api.post('/api/generos', { nome });
+    generos.push(novo);
+    filtroGenero.innerHTML = '<option value="">Gênero (todos)</option>'
+      + generos.map(g => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join('');
+    renderListaGeneros();
+    return novo;
+  }
+
+  async function adicionarTipo(nome) {
+    const novo = await api.post('/api/tipos', { nome });
+    tipos.push(novo);
+    filtroTipo.innerHTML = '<option value="">Tipo (todos)</option>'
+      + tipos.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
+    renderListaTipos();
+    return novo;
   }
 
   async function carregarEstantes() {
@@ -403,9 +427,7 @@ export default async function renderLivros(container) {
             erroEl.classList.remove('hidden');
             return;
           }
-          const novoGenero = await api.post('/api/generos', { nome: nomeNovo });
-          generos.push(novoGenero);
-          renderListaGeneros();
+          const novoGenero = await adicionarGenero(nomeNovo);
           generoId = novoGenero.id;
         }
 
@@ -416,9 +438,7 @@ export default async function renderLivros(container) {
             erroEl.classList.remove('hidden');
             return;
           }
-          const novoTipo = await api.post('/api/tipos', { nome: nomeNovo });
-          tipos.push(novoTipo);
-          renderListaTipos();
+          const novoTipo = await adicionarTipo(nomeNovo);
           tipoId = novoTipo.id;
         }
 
@@ -480,6 +500,34 @@ export default async function renderLivros(container) {
   container.querySelector('#lista-generos-cadastro').addEventListener('click', (e) => {
     const id = e.target.dataset.limparCorGenero;
     if (id) alterarCorGenero(id, null);
+  });
+
+  container.querySelector('#form-novo-genero').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = container.querySelector('#novo-genero-nome');
+    const nome = input.value.trim();
+    if (!nome) return;
+    try {
+      await adicionarGenero(nome);
+      input.value = '';
+      mostrarToast('Gênero adicionado.', 'sucesso');
+    } catch (err) {
+      mostrarToast(err.message, 'erro');
+    }
+  });
+
+  container.querySelector('#form-novo-tipo').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = container.querySelector('#novo-tipo-nome');
+    const nome = input.value.trim();
+    if (!nome) return;
+    try {
+      await adicionarTipo(nome);
+      input.value = '';
+      mostrarToast('Tipo adicionado.', 'sucesso');
+    } catch (err) {
+      mostrarToast(err.message, 'erro');
+    }
   });
 
   inputBusca.addEventListener('input', debounce(() => { pagina = 1; carregar(); }, 350));

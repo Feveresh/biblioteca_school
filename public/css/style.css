@@ -562,6 +562,22 @@ tbody tr:hover { background: var(--color-row-hover); }
 }
 .modal-grade .campo-full { grid-column: 1 / -1; }
 
+/* Campos "colados" (ex: Estante/Prateleira) — visualmente um único bloco, mas com uma
+   linha divisória entre os dois (a borda direita do primeiro sobrepõe a esquerda do
+   segundo, então vira uma única linha de 1px em vez de duas coladas). */
+.grupo-colado { display: flex; }
+.grupo-colado input {
+  border-radius: 0;
+  text-align: center;
+}
+.grupo-colado input:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.grupo-colado input:last-child {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  margin-left: -1px;
+}
+.grupo-colado input:focus { position: relative; z-index: 1; }
+
 .campo-capa-livro { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
 .campo-capa-livro .campo { flex: 1; margin-bottom: 0; }
 .capa-preview-grande {

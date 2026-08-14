@@ -203,12 +203,11 @@ export default async function renderLivros(container) {
             <input type="number" id="f-paginas" min="1" value="${livro && livro.paginas ? livro.paginas : ''}">
           </div>
           <div class="campo">
-            <label for="f-estante">Estante</label>
-            <input id="f-estante" value="${livro && livro.estante ? escapeHtml(livro.estante) : ''}">
-          </div>
-          <div class="campo">
-            <label for="f-prateleira">Prateleira</label>
-            <input id="f-prateleira" value="${livro && livro.prateleira ? escapeHtml(livro.prateleira) : ''}">
+            <label>Localização</label>
+            <div class="grupo-colado">
+              <input id="f-estante" placeholder="Estante" value="${livro && livro.estante ? escapeHtml(livro.estante) : ''}">
+              <input id="f-prateleira" placeholder="Prateleira" value="${livro && livro.prateleira ? escapeHtml(livro.prateleira) : ''}">
+            </div>
           </div>
           <div class="campo campo-full">
             <label for="f-genero">Gênero</label>

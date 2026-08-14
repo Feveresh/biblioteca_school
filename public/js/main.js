@@ -17,6 +17,9 @@ const appEl = document.getElementById('app');
 const viewEl = document.getElementById('view');
 const formLogin = document.getElementById('form-login');
 const loginErro = document.getElementById('login-erro');
+const loginEmailInput = document.getElementById('login-email');
+
+const CHAVE_ULTIMO_EMAIL = 'biblioteca_ultimo_email';
 
 const ROTAS = {
   '/': renderDashboard,
@@ -67,6 +70,15 @@ function mostrarLogin() {
   appEl.classList.add('hidden');
   telaLogin.classList.remove('hidden');
   formLogin.reset();
+  // Lembra o e-mail usado da última vez (não a senha), independente de logout, sessão
+  // expirada ou fechar e reabrir o navegador — só troca quando outro login tiver sucesso.
+  const ultimoEmail = localStorage.getItem(CHAVE_ULTIMO_EMAIL);
+  if (ultimoEmail) {
+    loginEmailInput.value = ultimoEmail;
+    document.getElementById('login-senha').focus();
+  } else {
+    loginEmailInput.focus();
+  }
 }
 
 async function rotear() {
@@ -111,6 +123,7 @@ formLogin.addEventListener('submit', async (e) => {
   try {
     const { token, usuario } = await api.post('/api/auth/login', { email, senha });
     salvarSessao(token, usuario);
+    localStorage.setItem(CHAVE_ULTIMO_EMAIL, email);
     mostrarApp();
     if (temPermissao(usuario, 'configuracoes.gerenciar')) verificarNoLogin();
   } catch (err) {

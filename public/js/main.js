@@ -10,6 +10,7 @@ import renderAuditoria from './views/auditoria.js';
 import renderConfiguracoes from './views/configuracoes.js';
 import renderAlunoDetalhe from './views/alunoDetalhe.js';
 import { carregarIdentidadeVisual } from './identidadeVisual.js';
+import { verificarNoCarregamento, verificarNoLogin } from './atualizacao.js';
 
 const telaLogin = document.getElementById('tela-login');
 const appEl = document.getElementById('app');
@@ -111,6 +112,7 @@ formLogin.addEventListener('submit', async (e) => {
     const { token, usuario } = await api.post('/api/auth/login', { email, senha });
     salvarSessao(token, usuario);
     mostrarApp();
+    if (temPermissao(usuario, 'configuracoes.gerenciar')) verificarNoLogin();
   } catch (err) {
     loginErro.textContent = err.message;
     loginErro.classList.remove('hidden');
@@ -136,10 +138,16 @@ window.addEventListener('sessao-expirada', () => {
 
 window.addEventListener('hashchange', rotear);
 
-carregarIdentidadeVisual();
+// Cobre o caso de abrir uma aba nova (ou recarregar) bem no meio de uma atualização em
+// andamento — se estiver, a tela fixa assume e nem o login nem o app chegam a aparecer.
+verificarNoCarregamento().then((emAndamento) => {
+  if (emAndamento) return;
 
-if (getToken()) {
-  mostrarApp();
-} else {
-  mostrarLogin();
-}
+  carregarIdentidadeVisual();
+
+  if (getToken()) {
+    mostrarApp();
+  } else {
+    mostrarLogin();
+  }
+});

@@ -4,3 +4,6 @@ backups/
 installer/.cache/
 installer/dist/
 installer/Output/
+biblioteca.db
+biblioteca.db-*
+.atualizacao-estado.json

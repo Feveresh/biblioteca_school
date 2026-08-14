@@ -31,6 +31,9 @@ app.use('/api/usuarios',      autenticar, autorizar('usuarios.gerenciar'), requi
 app.use('/api/auditoria',     autenticar, autorizar('auditoria.ver'),      require('./routes/auditoria'));
 app.use('/api/configuracoes', autenticar, require('./routes/configuracoes'));
 app.use('/api/migracao',      autenticar, require('./routes/migracao'));
+// Sem "autenticar" no mount — a rota /status precisa responder mesmo sem sessão (ver
+// routes/atualizacao.js, que autentica as outras individualmente).
+app.use('/api/atualizacao', require('./routes/atualizacao'));
 
 app.use('/api', notFound);
 app.use(errorHandler);
@@ -45,3 +48,9 @@ app.listen(PORT, () => {
 require('./config/db')
   .query('UPDATE configuracoes SET versao_sistema = $1 WHERE id = 1', [require('./package.json').version])
   .catch(err => console.error('⚠️  Não consegui atualizar a versão do sistema:', err.message));
+
+// Chegar até aqui rodando o código novo já é a prova de que uma auto-atualização em
+// andamento (se havia uma) deu certo — o processo anterior nem chega a rodar essa linha
+// (o instalador para o serviço antes de copiar os arquivos), então essa limpeza só
+// acontece no processo novo, depois do reinício.
+require('./utils/atualizador').limparEstadoNaSubida();

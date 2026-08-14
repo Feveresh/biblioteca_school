@@ -57,7 +57,10 @@
         <button id="btn-logout" class="link-sair">Sair</button>
       </div>
     </div>
-    <div class="sidebar-versao" id="sidebar-versao"></div>
+    <div class="sidebar-versao">
+      <span id="sidebar-versao"></span>
+      <button type="button" id="sidebar-btn-atualizar" class="link-atualizar hidden"></button>
+    </div>
   </aside>
 
   <main class="conteudo">
@@ -78,6 +81,17 @@
 
 <!-- TOASTS -->
 <div id="toast-container" class="toast-container"></div>
+
+<!-- TELA DE ATUALIZAÇÃO — fixa, sem como fechar (exceto em caso de erro) -->
+<div id="atualizacao-overlay" class="atualizacao-overlay hidden">
+  <div class="atualizacao-caixa">
+    <div id="atualizacao-spinner" class="atualizacao-spinner"></div>
+    <h2 id="atualizacao-titulo">Atualizando o sistema</h2>
+    <p id="atualizacao-mensagem" class="sub">Preparando…</p>
+    <div class="atualizacao-barra"><div id="atualizacao-barra-preenchida" class="atualizacao-barra-preenchida"></div></div>
+    <button type="button" id="atualizacao-btn-fechar" class="btn btn-secondary btn-sm hidden">Fechar</button>
+  </div>
+</div>
 
 <script type="module" src="js/main.js"></script>
 </body>

@@ -137,6 +137,7 @@ CREATE TABLE configuracoes (
   auditoria_ultima_limpeza  TIMESTAMP,
   permitir_acesso_rede      BOOLEAN NOT NULL DEFAULT FALSE,
   versao_sistema            VARCHAR(20),
+  url_verificacao_atualizacao VARCHAR(255),
   atualizado_em             TIMESTAMP NOT NULL DEFAULT NOW(),
   atualizado_por            INT REFERENCES users(id)
 );
@@ -192,4 +193,5 @@ INSERT INTO schema_migrations (nome) VALUES
   ('013_acesso_rede.sql'),
   ('014_versao_sistema.sql'),
   ('015_colunas_busca_normalizada.sql'),
-  ('016_capa_livro.sql');
+  ('016_capa_livro.sql'),
+  ('017_url_verificacao_atualizacao.sql');

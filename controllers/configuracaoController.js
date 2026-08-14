@@ -31,7 +31,7 @@ exports.atualizar = async (req, res) => {
     nome_biblioteca, cor_primaria, cor_menu, cor_login, cor_botoes, logo_data_url,
     dias_emprestimo_padrao, limite_livros_por_aluno,
     login_max_tentativas, login_bloqueio_minutos, auditoria_retencao_dias,
-    permitir_acesso_rede,
+    permitir_acesso_rede, url_verificacao_atualizacao,
   } = req.body;
 
   if (!nome_biblioteca || !cor_primaria || !cor_menu || !cor_login || !cor_botoes || !dias_emprestimo_padrao
@@ -52,14 +52,14 @@ exports.atualizar = async (req, res) => {
        nome_biblioteca=$1, cor_primaria=$2, cor_menu=$3, cor_login=$4, cor_botoes=$5, logo_data_url=$6,
        dias_emprestimo_padrao=$7, limite_livros_por_aluno=$8,
        login_max_tentativas=$9, login_bloqueio_minutos=$10, auditoria_retencao_dias=$11,
-       permitir_acesso_rede=$12,
-       atualizado_em=CURRENT_TIMESTAMP, atualizado_por=$13
+       permitir_acesso_rede=$12, url_verificacao_atualizacao=$13,
+       atualizado_em=CURRENT_TIMESTAMP, atualizado_por=$14
      WHERE id = 1 RETURNING *`,
     [
       nome_biblioteca, cor_primaria, cor_menu, cor_login, cor_botoes, logo_data_url || null,
       dias_emprestimo_padrao, limite_livros_por_aluno || null,
       login_max_tentativas, login_bloqueio_minutos, auditoria_retencao_dias,
-      Boolean(permitir_acesso_rede),
+      Boolean(permitir_acesso_rede), url_verificacao_atualizacao?.trim() || null,
       req.usuario.id,
     ]
   );

@@ -89,7 +89,7 @@ exports.criar = async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO livros (tombo, titulo, titulo_busca, autor, autor_busca, editora, ano_publicacao, paginas, estante, prateleira, genero_id, capa_data_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-      [tombo, titulo, normalizarBusca(titulo), autor, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, capa_data_url || null]
+      [tombo, titulo, normalizarBusca(titulo), autor || null, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, capa_data_url || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -114,7 +114,7 @@ exports.atualizar = async (req, res) => {
       `UPDATE livros SET tombo=$1, titulo=$2, titulo_busca=$3, autor=$4, autor_busca=$5, editora=$6, ano_publicacao=$7,
                           paginas=$8, estante=$9, prateleira=$10, genero_id=$11, capa_data_url=$12
        WHERE id=$13 RETURNING *`,
-      [tombo, titulo, normalizarBusca(titulo), autor, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, capa_data_url || null, req.params.id]
+      [tombo, titulo, normalizarBusca(titulo), autor || null, normalizarBusca(autor), editora || null, ano_publicacao || null, paginas || null, estante || null, prateleira || null, genero_id || null, capa_data_url || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ erro: 'Livro não encontrado' });
     res.json(rows[0]);

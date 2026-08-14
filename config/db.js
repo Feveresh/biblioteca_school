@@ -43,9 +43,13 @@ function criarAdaptadorSqlite() {
   console.log(`✅ SQLite conectado (${caminho})`);
 
   // true/false do JS não fazem bind direto em parâmetro do SQLite (erro em tempo de execução)
-  // — SQLite não tem tipo booleano nativo, guarda como 0/1.
+  // — SQLite não tem tipo booleano nativo, guarda como 0/1. `undefined` (campo opcional
+  // ausente do req.body, ex: "autor" ao cadastrar um livro sem preenchê-lo) também não pode
+  // ser vinculado — o `pg` converte isso pra NULL sozinho, então o adaptador replica esse
+  // comportamento aqui, senão toda controller precisaria lembrar de "campo || null" pra cada
+  // valor opcional (um esquecimento já derrubou POST /api/livros com 500 no SQLite).
   function converterParams(params) {
-    return (params || []).map(p => (p === true ? 1 : p === false ? 0 : p));
+    return (params || []).map(p => (p === true ? 1 : p === false ? 0 : p === undefined ? null : p));
   }
 
   function normalizarErro(err) {

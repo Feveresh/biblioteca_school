@@ -4,6 +4,10 @@ import { escapeHtml, imprimirImagens } from '../utils.js';
 const PALETA = ['#4f46e5', '#16a34a', '#d97706', '#dc2626', '#0891b2', '#9333ea', '#db2777', '#65a30d', '#0284c7', '#ea580c', '#4338ca', '#0f766e'];
 const MESES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
+// Cor fixa (independente da identidade visual configurada) só pros gráficos de
+// empréstimos por mês e uso por turma, a pedido específico.
+const AMARELO_EMPRESTIMOS = '#FACC15';
+
 function rotuloMes(mesIso) {
   const [ano, mes] = mesIso.split('-');
   return `${MESES_ABREV[Number(mes) - 1]}/${ano.slice(2)}`;
@@ -288,7 +292,7 @@ export default async function renderEstatisticas(container) {
         type: 'bar',
         data: {
           labels: dados.emprestimosPorMes.map(m => rotuloMes(m.mes)),
-          datasets: [{ label: 'Empréstimos', data: dados.emprestimosPorMes.map(m => m.total), backgroundColor: cores.primaria, borderRadius: 4 }],
+          datasets: [{ label: 'Empréstimos', data: dados.emprestimosPorMes.map(m => m.total), backgroundColor: AMARELO_EMPRESTIMOS, borderRadius: 4 }],
         },
         options: opcoesEixo(cores),
       });
@@ -296,7 +300,7 @@ export default async function renderEstatisticas(container) {
         type: 'bar',
         data: {
           labels: dados.usoPorTurma.map(t => t.turma),
-          datasets: [{ label: 'Empréstimos', data: dados.usoPorTurma.map(t => t.total), backgroundColor: cores.primaria, borderRadius: 4 }],
+          datasets: [{ label: 'Empréstimos', data: dados.usoPorTurma.map(t => t.total), backgroundColor: AMARELO_EMPRESTIMOS, borderRadius: 4 }],
         },
         options: opcoesEixo(cores),
       });

@@ -57,6 +57,11 @@ export default async function renderDashboard(container) {
     <div class="dashboard-secao">
       <h2>🔄 Empréstimos</h2>
       <div class="grid-stats">
+        <div class="stat-card sucesso">
+          <div class="stat-icone">✅</div>
+          <div class="stat-valor">${dados.emprestimos.devolvidos}</div>
+          <div class="stat-label">Empréstimos devolvidos</div>
+        </div>
         <div class="stat-card aviso">
           <div class="stat-icone">⏳</div>
           <div class="stat-valor">${dados.emprestimos.pendentes}</div>
@@ -66,11 +71,6 @@ export default async function renderDashboard(container) {
           <div class="stat-icone">⚠️</div>
           <div class="stat-valor">${dados.emprestimos.atrasados}</div>
           <div class="stat-label">Empréstimos atrasados</div>
-        </div>
-        <div class="stat-card sucesso">
-          <div class="stat-icone">✅</div>
-          <div class="stat-valor">${dados.emprestimos.devolvidos}</div>
-          <div class="stat-label">Empréstimos devolvidos</div>
         </div>
       </div>
     </div>

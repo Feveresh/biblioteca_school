@@ -25,3 +25,17 @@ exports.criar = async (req, res) => {
     throw err;
   }
 };
+
+// DELETE /api/turmas/:id
+exports.remover = async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM turmas WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ erro: 'Turma não encontrada' });
+    res.json({ mensagem: 'Turma removida com sucesso' });
+  } catch (err) {
+    if (err.code === '23503') {
+      return res.status(409).json({ erro: 'Turma está em uso por algum aluno e não pode ser removida' });
+    }
+    throw err;
+  }
+};

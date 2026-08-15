@@ -42,3 +42,17 @@ exports.atualizarCor = async (req, res) => {
   if (!rows[0]) return res.status(404).json({ erro: 'Gênero não encontrado' });
   res.json(rows[0]);
 };
+
+// DELETE /api/generos/:id
+exports.remover = async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM generos WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ erro: 'Gênero não encontrado' });
+    res.json({ mensagem: 'Gênero removido com sucesso' });
+  } catch (err) {
+    if (err.code === '23503') {
+      return res.status(409).json({ erro: 'Gênero está em uso por algum item e não pode ser removido' });
+    }
+    throw err;
+  }
+};

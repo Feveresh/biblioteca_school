@@ -25,3 +25,17 @@ exports.criar = async (req, res) => {
     throw err;
   }
 };
+
+// DELETE /api/tipos/:id
+exports.remover = async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM tipos WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ erro: 'Tipo não encontrado' });
+    res.json({ mensagem: 'Tipo removido com sucesso' });
+  } catch (err) {
+    if (err.code === '23503') {
+      return res.status(409).json({ erro: 'Tipo está em uso por algum item e não pode ser removido' });
+    }
+    throw err;
+  }
+};

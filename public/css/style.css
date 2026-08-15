@@ -505,7 +505,7 @@ label.toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px 5px 6px;
+  padding: 5px 12px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface);
@@ -514,7 +514,10 @@ label.toggle {
   color: var(--color-text);
   transition: border-color .15s;
 }
-.item-catalogo:has(.chip-cor):hover { border-color: var(--color-border-hover); }
+/* Com seletor de cor, o padding esquerdo encolhe — o círculo já dá peso visual
+   próprio, padding igual ao da direita deixaria o texto puxado pra direita. */
+.item-catalogo:has(.chip-cor) { padding-left: 6px; }
+.item-catalogo:hover { border-color: var(--color-border-hover); }
 
 /* Seletor de cor nativo, recortado num círculo — some com a caixinha quadrada
    padrão do navegador, fica só o "olho mágico" da cor escolhida. */

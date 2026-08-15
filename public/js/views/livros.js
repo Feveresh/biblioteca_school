@@ -176,6 +176,7 @@ export default async function renderLivros(container) {
         <input type="color" class="chip-cor" data-cor-genero="${g.id}" value="${g.cor || '#94a3b8'}" title="Escolher cor">
         <span>${escapeHtml(g.nome)}</span>
         ${g.cor ? `<button type="button" class="chip-limpar" data-limpar-cor-genero="${g.id}" title="Remover cor">✕</button>` : ''}
+        <button type="button" class="chip-limpar" data-excluir-genero="${g.id}" data-nome="${escapeHtml(g.nome)}" title="Excluir gênero">🗑️</button>
       </div>
     `).join('');
   }
@@ -187,7 +188,12 @@ export default async function renderLivros(container) {
       el.innerHTML = '<p class="sub">Nenhum tipo cadastrado ainda.</p>';
       return;
     }
-    el.innerHTML = tipos.map(t => `<div class="item-catalogo">${escapeHtml(t.nome)}</div>`).join('');
+    el.innerHTML = tipos.map(t => `
+      <div class="item-catalogo">
+        <span>${escapeHtml(t.nome)}</span>
+        <button type="button" class="chip-limpar" data-excluir-tipo="${t.id}" data-nome="${escapeHtml(t.nome)}" title="Excluir tipo">🗑️</button>
+      </div>
+    `).join('');
   }
 
   async function alterarCorGenero(id, cor) {
@@ -218,6 +224,40 @@ export default async function renderLivros(container) {
       + tipos.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
     renderListaTipos();
     return novo;
+  }
+
+  async function excluirGenero(id, nome) {
+    const ok = await confirmar(`Tem certeza que deseja excluir o gênero "${nome}"? Essa ação não pode ser desfeita.`, {
+      titulo: 'Excluir gênero', textoConfirmar: 'Excluir', perigo: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/api/generos/${id}`);
+      generos = generos.filter(g => g.id !== Number(id));
+      filtroGenero.innerHTML = '<option value="">Gênero (todos)</option>'
+        + generos.map(g => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join('');
+      renderListaGeneros();
+      mostrarToast('Gênero removido.', 'sucesso');
+    } catch (err) {
+      mostrarToast(err.message, 'erro');
+    }
+  }
+
+  async function excluirTipo(id, nome) {
+    const ok = await confirmar(`Tem certeza que deseja excluir o tipo "${nome}"? Essa ação não pode ser desfeita.`, {
+      titulo: 'Excluir tipo', textoConfirmar: 'Excluir', perigo: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/api/tipos/${id}`);
+      tipos = tipos.filter(t => t.id !== Number(id));
+      filtroTipo.innerHTML = '<option value="">Tipo (todos)</option>'
+        + tipos.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
+      renderListaTipos();
+      mostrarToast('Tipo removido.', 'sucesso');
+    } catch (err) {
+      mostrarToast(err.message, 'erro');
+    }
   }
 
   async function carregarEstantes() {
@@ -498,8 +538,15 @@ export default async function renderLivros(container) {
     if (id) alterarCorGenero(id, e.target.value);
   });
   container.querySelector('#lista-generos-cadastro').addEventListener('click', (e) => {
-    const id = e.target.dataset.limparCorGenero;
-    if (id) alterarCorGenero(id, null);
+    const idLimpar = e.target.dataset.limparCorGenero;
+    if (idLimpar) return alterarCorGenero(idLimpar, null);
+    const idExcluir = e.target.dataset.excluirGenero;
+    if (idExcluir) excluirGenero(idExcluir, e.target.dataset.nome);
+  });
+
+  container.querySelector('#lista-tipos-cadastro').addEventListener('click', (e) => {
+    const id = e.target.dataset.excluirTipo;
+    if (id) excluirTipo(id, e.target.dataset.nome);
   });
 
   container.querySelector('#form-novo-genero').addEventListener('submit', async (e) => {

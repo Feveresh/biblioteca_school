@@ -13,6 +13,11 @@ const COLUNAS_IMPRESSAO = [
 
 const NOVA_TURMA = '__nova__';
 
+const ABAS = [
+  { id: 'alunos', rotulo: 'Alunos' },
+  { id: 'cadastro', rotulo: 'Cadastro' },
+];
+
 export default async function renderAlunos(container) {
   container.innerHTML = `
     <div class="view-header">
@@ -20,25 +25,46 @@ export default async function renderAlunos(container) {
         <h1>Alunos</h1>
         <div class="sub">Alunos cadastrados na biblioteca</div>
       </div>
-      <button id="btn-novo-aluno" class="btn btn-primary">+ Novo aluno</button>
     </div>
-    <div class="toolbar">
-      <input type="search" id="busca-aluno" placeholder="Buscar por nome ou turma…">
-      <select id="filtro-turma"><option value="">Turma (todas)</option></select>
-      <button id="btn-imprimir" class="btn btn-secondary btn-sm">🖨️ Imprimir</button>
+
+    <div class="abas">
+      ${ABAS.map((a, i) => `<button type="button" class="aba-btn ${i === 0 ? 'ativa' : ''}" data-aba="${a.id}">${a.rotulo}</button>`).join('')}
     </div>
-    <div class="tabela-wrap">
-      <table>
-        <thead>
-          <tr>
-            ${COLUNAS.map(c => `<th data-ordenar="${c.chave}" style="cursor:pointer;user-select:none;">${c.rotulo} <span class="seta-ordenacao" data-seta="${c.chave}"></span></th>`).join('')}
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tbody-alunos"></tbody>
-      </table>
+
+    <div class="aba-conteudo" data-aba-conteudo="alunos">
+      <div class="toolbar">
+        <input type="search" id="busca-aluno" placeholder="Buscar por nome ou turma…">
+        <select id="filtro-turma"><option value="">Turma (todas)</option></select>
+        <button id="btn-imprimir" class="btn btn-secondary btn-sm">🖨️ Imprimir</button>
+      </div>
+      <div class="tabela-wrap">
+        <table>
+          <thead>
+            <tr>
+              ${COLUNAS.map(c => `<th data-ordenar="${c.chave}" style="cursor:pointer;user-select:none;">${c.rotulo} <span class="seta-ordenacao" data-seta="${c.chave}"></span></th>`).join('')}
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-alunos"></tbody>
+        </table>
+      </div>
+      <div class="toolbar" id="paginacao" style="justify-content:flex-end;margin-top:14px;"></div>
     </div>
-    <div class="toolbar" id="paginacao" style="justify-content:flex-end;margin-top:14px;"></div>
+
+    <div class="aba-conteudo hidden" data-aba-conteudo="cadastro">
+      <div class="painel">
+        <h2>Cadastrar novo aluno</h2>
+        <button id="btn-novo-aluno" class="btn btn-primary">+ Novo aluno</button>
+      </div>
+      <div class="painel">
+        <h2>Turmas</h2>
+        <div id="lista-turmas-cadastro" class="grade-catalogo"></div>
+        <form id="form-nova-turma" class="form-catalogo-novo">
+          <input type="text" id="nova-turma-nome" placeholder="Nome da nova turma">
+          <button type="submit" class="btn btn-secondary btn-sm">+ Adicionar</button>
+        </form>
+      </div>
+    </div>
   `;
 
   const tbody = container.querySelector('#tbody-alunos');
@@ -62,6 +88,48 @@ export default async function renderAlunos(container) {
     turmas = await api.get('/api/turmas');
     filtroTurma.innerHTML = '<option value="">Turma (todas)</option>'
       + turmas.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
+    renderListaTurmas();
+  }
+
+  function renderListaTurmas() {
+    const el = container.querySelector('#lista-turmas-cadastro');
+    if (!el) return;
+    if (!turmas.length) {
+      el.innerHTML = '<p class="sub">Nenhuma turma cadastrada ainda.</p>';
+      return;
+    }
+    el.innerHTML = turmas.map(t => `
+      <div class="item-catalogo">
+        <span>${escapeHtml(t.nome)}</span>
+        <button type="button" class="chip-limpar" data-excluir-turma="${t.id}" data-nome="${escapeHtml(t.nome)}" title="Excluir turma">🗑️</button>
+      </div>
+    `).join('');
+  }
+
+  async function adicionarTurma(nome) {
+    const nova = await api.post('/api/turmas', { nome });
+    turmas.push(nova);
+    filtroTurma.innerHTML = '<option value="">Turma (todas)</option>'
+      + turmas.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
+    renderListaTurmas();
+    return nova;
+  }
+
+  async function excluirTurma(id, nome) {
+    const ok = await confirmar(`Tem certeza que deseja excluir a turma "${nome}"? Essa ação não pode ser desfeita.`, {
+      titulo: 'Excluir turma', textoConfirmar: 'Excluir', perigo: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/api/turmas/${id}`);
+      turmas = turmas.filter(t => t.id !== Number(id));
+      filtroTurma.innerHTML = '<option value="">Turma (todas)</option>'
+        + turmas.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
+      renderListaTurmas();
+      mostrarToast('Turma removida.', 'sucesso');
+    } catch (err) {
+      mostrarToast(err.message, 'erro');
+    }
   }
 
   function construirParams() {
@@ -160,8 +228,7 @@ export default async function renderAlunos(container) {
             erroEl.classList.remove('hidden');
             return;
           }
-          const novaTurma = await api.post('/api/turmas', { nome: nomeNova });
-          turmas.push(novaTurma);
+          const novaTurma = await adicionarTurma(nomeNova);
           turmaId = novaTurma.id;
         }
 
@@ -192,6 +259,34 @@ export default async function renderAlunos(container) {
     params.set('porPagina', 500);
     const { dados } = await api.get(`/api/alunos?${params.toString()}`);
     imprimirTabela('Alunos', COLUNAS_IMPRESSAO, dados);
+  });
+
+  container.querySelectorAll('.aba-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.aba-btn').forEach(b => b.classList.toggle('ativa', b === btn));
+      container.querySelectorAll('[data-aba-conteudo]').forEach(secao => {
+        secao.classList.toggle('hidden', secao.dataset.abaConteudo !== btn.dataset.aba);
+      });
+    });
+  });
+
+  container.querySelector('#lista-turmas-cadastro').addEventListener('click', (e) => {
+    const id = e.target.dataset.excluirTurma;
+    if (id) excluirTurma(id, e.target.dataset.nome);
+  });
+
+  container.querySelector('#form-nova-turma').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = container.querySelector('#nova-turma-nome');
+    const nome = input.value.trim();
+    if (!nome) return;
+    try {
+      await adicionarTurma(nome);
+      input.value = '';
+      mostrarToast('Turma adicionada.', 'sucesso');
+    } catch (err) {
+      mostrarToast(err.message, 'erro');
+    }
   });
 
   container.querySelector('#btn-novo-aluno').addEventListener('click', () => abrirFormulario(null));

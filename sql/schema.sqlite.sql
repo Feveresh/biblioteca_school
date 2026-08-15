@@ -73,10 +73,10 @@ CREATE TABLE generos (
   nome  VARCHAR(60) UNIQUE NOT NULL,
   cor   VARCHAR(7)
 );
-INSERT INTO generos (nome) VALUES
-  ('Aventura'), ('Biografia'), ('Clássico'), ('Comédia'), ('Didático'),
-  ('Drama'), ('Fantasia'), ('Ficção Científica'), ('História'), ('Infantil'),
-  ('Poesia'), ('Romance'), ('Suspense'), ('Terror'), ('Outro');
+INSERT INTO generos (nome, cor) VALUES
+  ('Aventura', '#ffdd00'), ('Biografia', '#7a4700'), ('Clássico', '#ffae3d'), ('Comédia', '#a6ff00'), ('Didático', '#002aff'),
+  ('Drama', '#ff4000'), ('Fantasia', '#ff24c5'), ('Ficção Científica', '#007bff'), ('História', '#b65535'), ('Infantil', '#47b9ff'),
+  ('Poesia', '#9900ff'), ('Romance', '#ff0059'), ('Suspense', '#ff0000'), ('Terror', '#7a0000'), ('Outro', '#95a3b7');
 
 -- ===== Tipos de item (Livro, HQ, Mangá, Revista...) =====
 CREATE TABLE tipos (

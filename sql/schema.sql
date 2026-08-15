@@ -71,10 +71,10 @@ CREATE TABLE generos (
   nome  VARCHAR(60) UNIQUE NOT NULL,
   cor   VARCHAR(7)  -- opcional, "#RRGGBB" — fundo do badge na listagem de itens
 );
-INSERT INTO generos (nome) VALUES
-  ('Aventura'), ('Biografia'), ('Clássico'), ('Comédia'), ('Didático'),
-  ('Drama'), ('Fantasia'), ('Ficção Científica'), ('História'), ('Infantil'),
-  ('Poesia'), ('Romance'), ('Suspense'), ('Terror'), ('Outro');
+INSERT INTO generos (nome, cor) VALUES
+  ('Aventura', '#ffdd00'), ('Biografia', '#7a4700'), ('Clássico', '#ffae3d'), ('Comédia', '#a6ff00'), ('Didático', '#002aff'),
+  ('Drama', '#ff4000'), ('Fantasia', '#ff24c5'), ('Ficção Científica', '#007bff'), ('História', '#b65535'), ('Infantil', '#47b9ff'),
+  ('Poesia', '#9900ff'), ('Romance', '#ff0059'), ('Suspense', '#ff0000'), ('Terror', '#7a0000'), ('Outro', '#95a3b7');
 
 -- ===== Tipos de item (Livro, HQ, Mangá, Revista...) =====
 CREATE TABLE tipos (
@@ -206,4 +206,5 @@ INSERT INTO schema_migrations (nome) VALUES
   ('017_url_verificacao_atualizacao.sql'),
   ('018_remove_url_verificacao_atualizacao.sql'),
   ('019_tipo_livros.sql'),
-  ('020_genero_cor.sql');
+  ('020_genero_cor.sql'),
+  ('021_cores_padrao_generos.sql');

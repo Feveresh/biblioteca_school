@@ -232,11 +232,13 @@ export default async function renderEstatisticas(container) {
     }
 
     if (aba === 'livros') {
+      // Mesma cor escolhida pro gênero (aba Cadastro de Biblioteca) — cai pra paleta
+      // genérica só pros que ainda não têm cor definida (ou "Sem gênero").
       criarGrafico('g-genero', {
         type: 'bar',
         data: {
           labels: dados.livrosPorGenero.map(g => g.genero),
-          datasets: [{ label: 'Livros', data: dados.livrosPorGenero.map(g => g.total), backgroundColor: PALETA, borderRadius: 4 }],
+          datasets: [{ label: 'Livros', data: dados.livrosPorGenero.map(g => g.total), backgroundColor: dados.livrosPorGenero.map((g, i) => g.cor || PALETA[i % PALETA.length]), borderRadius: 4 }],
         },
         options: { ...opcoesEixo(cores), indexAxis: 'y' },
       });
@@ -244,7 +246,7 @@ export default async function renderEstatisticas(container) {
         type: 'bar',
         data: {
           labels: dados.generosMaisEmprestados.map(g => g.genero),
-          datasets: [{ label: 'Empréstimos', data: dados.generosMaisEmprestados.map(g => g.total), backgroundColor: PALETA, borderRadius: 4 }],
+          datasets: [{ label: 'Empréstimos', data: dados.generosMaisEmprestados.map(g => g.total), backgroundColor: dados.generosMaisEmprestados.map((g, i) => g.cor || PALETA[i % PALETA.length]), borderRadius: 4 }],
         },
         options: { ...opcoesEixo(cores), indexAxis: 'y' },
       });

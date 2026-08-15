@@ -77,10 +77,10 @@ exports.resumo = async (req, res) => {
     `),
     // 5: livros por gênero
     pool.query(`
-      SELECT COALESCE(g.nome, 'Sem gênero') AS genero, COUNT(*)::int AS total
+      SELECT COALESCE(g.nome, 'Sem gênero') AS genero, g.cor, COUNT(*)::int AS total
       FROM livros l
       LEFT JOIN generos g ON g.id = l.genero_id
-      GROUP BY g.nome
+      GROUP BY g.nome, g.cor
       ORDER BY total DESC
     `),
     // 6: disponibilidade do acervo
@@ -125,11 +125,11 @@ exports.resumo = async (req, res) => {
     `),
     // 11: gêneros mais emprestados (por nº de empréstimos, não de livros no acervo)
     pool.query(`
-      SELECT COALESCE(g.nome, 'Sem gênero') AS genero, COUNT(*)::int AS total
+      SELECT COALESCE(g.nome, 'Sem gênero') AS genero, g.cor, COUNT(*)::int AS total
       FROM emprestimos e
       JOIN livros l ON l.id = e.livro_id
       LEFT JOIN generos g ON g.id = l.genero_id
-      GROUP BY g.nome
+      GROUP BY g.nome, g.cor
       ORDER BY total DESC
     `),
     // 12: alunos que mais leram, por soma de páginas dos livros emprestados — só

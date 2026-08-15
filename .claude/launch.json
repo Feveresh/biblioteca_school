@@ -5,7 +5,9 @@
       "name": "biblioteca",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 3303
+      "port": 3303,
+      "autoPort": false,
+      "url": "http://localhost:3303"
     }
   ]
 }

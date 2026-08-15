@@ -39,14 +39,19 @@ function opcoesRosca(cores) {
 
 const ABAS = [
   { id: 'geral', rotulo: 'Geral' },
-  { id: 'livros', rotulo: 'Livros' },
+  { id: 'livros', rotulo: 'Biblioteca' },
   { id: 'alunos', rotulo: 'Alunos' },
   { id: 'emprestimos', rotulo: 'Empréstimos' },
 ];
 
 export default async function renderEstatisticas(container) {
-  const dados = await api.get('/api/estatisticas');
+  const [dados, tipos] = await Promise.all([
+    api.get('/api/estatisticas'),
+    api.get('/api/tipos'),
+  ]);
   const temAuditoria = Boolean(dados.auditoria);
+  const opcoesTipo = '<option value="">Tipo (todos)</option>'
+    + tipos.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
   const abas = temAuditoria ? [...ABAS, { id: 'administracao', rotulo: 'Administração' }] : ABAS;
 
   const cores = {
@@ -82,7 +87,7 @@ export default async function renderEstatisticas(container) {
         <div class="stat-card aviso">
           <div class="stat-icone">📦</div>
           <div class="stat-valor">${dados.livrosParados.total}</div>
-          <div class="stat-label">Livros nunca emprestados</div>
+          <div class="stat-label">Itens nunca emprestados</div>
         </div>
         <div class="stat-card">
           <div class="stat-icone">🙈</div>
@@ -106,20 +111,33 @@ export default async function renderEstatisticas(container) {
     <div class="aba-conteudo hidden" data-aba-conteudo="livros">
       <div class="grid-graficos">
         <div class="painel">
-          <h2>Livros por gênero</h2>
-          <div class="sub">Quantidade no acervo</div>
+          <div class="painel-cabecalho">
+            <div>
+              <h2>Itens por gênero</h2>
+              <div class="sub">Quantidade no acervo</div>
+            </div>
+            <select id="filtro-tipo-genero">${opcoesTipo}</select>
+          </div>
           <div class="grafico-wrap alto"><canvas id="g-genero"></canvas></div>
         </div>
         <div class="painel">
-          <h2>Gêneros mais emprestados</h2>
-          <div class="sub">Por número de empréstimos</div>
+          <div class="painel-cabecalho">
+            <div>
+              <h2>Gêneros mais emprestados</h2>
+              <div class="sub">Por número de empréstimos</div>
+            </div>
+            <select id="filtro-tipo-genero-emprestado">${opcoesTipo}</select>
+          </div>
           <div class="grafico-wrap alto"><canvas id="g-genero-emprestado"></canvas></div>
         </div>
       </div>
 
       <div class="grid-graficos">
         <div class="painel">
-          <h2>Livros mais emprestados</h2>
+          <div class="painel-cabecalho">
+            <h2>Itens mais emprestados</h2>
+            <select id="filtro-tipo-top-livros">${opcoesTipo}</select>
+          </div>
           <div class="grafico-wrap alto"><canvas id="g-top-livros"></canvas></div>
         </div>
       </div>
@@ -127,7 +145,7 @@ export default async function renderEstatisticas(container) {
       ${dados.livrosParados.lista.length ? `
         <div class="painel">
           <h2>Acervo parado</h2>
-          <div class="sub">Livros que nunca foram emprestados${dados.livrosParados.total > dados.livrosParados.lista.length ? ` (mostrando ${dados.livrosParados.lista.length} de ${dados.livrosParados.total})` : ''}</div>
+          <div class="sub">Itens que nunca foram emprestados${dados.livrosParados.total > dados.livrosParados.lista.length ? ` (mostrando ${dados.livrosParados.lista.length} de ${dados.livrosParados.total})` : ''}</div>
           <div class="tabela-wrap" style="box-shadow:none;border:none;">
             <table>
               <thead><tr><th>Título</th><th>Tombo</th></tr></thead>
@@ -197,11 +215,60 @@ export default async function renderEstatisticas(container) {
 
   // Chart.js não solta a referência do canvas sozinho quando o innerHTML da view é
   // trocado numa nova navegação — guardamos as instâncias pra destruir explicitamente
-  // antes de recriar, evitando vazamento de memória ao entrar e sair da tela.
+  // antes de recriar, evitando vazamento de memória ao entrar e sair da tela. Também serve
+  // pra redesenhar um gráfico específico quando o filtro de tipo dele muda (sem isso, uma
+  // segunda instância no mesmo <canvas> conflita com a anterior).
   let graficosAtivos = [];
   function criarGrafico(id, config) {
     const canvas = container.querySelector(`#${id}`);
-    if (canvas) graficosAtivos.push(new Chart(canvas, config));
+    if (!canvas) return;
+    const existente = graficosAtivos.find(g => g.canvas === canvas);
+    if (existente) {
+      existente.destroy();
+      graficosAtivos = graficosAtivos.filter(g => g !== existente);
+    }
+    graficosAtivos.push(new Chart(canvas, config));
+  }
+
+  // Config dos 3 gráficos com seletor de tipo próprio, isolados em função pra poderem ser
+  // redesenhados (com dados filtrados) sem duplicar a montagem do gráfico inteiro.
+  function configItensPorGenero(livrosPorGenero) {
+    return {
+      type: 'bar',
+      data: {
+        labels: livrosPorGenero.map(g => g.genero),
+        datasets: [{ label: 'Itens', data: livrosPorGenero.map(g => g.total), backgroundColor: livrosPorGenero.map((g, i) => g.cor || PALETA[i % PALETA.length]), borderRadius: 4 }],
+      },
+      options: { ...opcoesEixo(cores), indexAxis: 'y' },
+    };
+  }
+  function configGenerosMaisEmprestados(generosMaisEmprestados) {
+    return {
+      type: 'bar',
+      data: {
+        labels: generosMaisEmprestados.map(g => g.genero),
+        datasets: [{ label: 'Empréstimos', data: generosMaisEmprestados.map(g => g.total), backgroundColor: generosMaisEmprestados.map((g, i) => g.cor || PALETA[i % PALETA.length]), borderRadius: 4 }],
+      },
+      options: { ...opcoesEixo(cores), indexAxis: 'y' },
+    };
+  }
+  function configTopItens(topLivros) {
+    return {
+      type: 'bar',
+      data: {
+        labels: topLivros.map(l => l.titulo),
+        datasets: [{ label: 'Empréstimos', data: topLivros.map(l => l.total), backgroundColor: cores.primaria, borderRadius: 4 }],
+      },
+      options: { ...opcoesEixo(cores), indexAxis: 'y' },
+    };
+  }
+
+  // Refaz só o gráfico "canvasId" com os dados do tipo escolhido — os outros dois
+  // gráficos com filtro próprio continuam com o que já estava selecionado neles.
+  async function atualizarGraficoPorTipo(tipoId, canvasId, campoResposta, montarConfig) {
+    const params = tipoId ? `?tipo_id=${tipoId}` : '';
+    const resposta = await api.get(`/api/estatisticas${params}`);
+    criarGrafico(canvasId, montarConfig(resposta[campoResposta]));
   }
 
   // Um canvas dentro de uma aba escondida (display:none) tem largura zero — por isso
@@ -234,30 +301,9 @@ export default async function renderEstatisticas(container) {
     if (aba === 'livros') {
       // Mesma cor escolhida pro gênero (aba Cadastro de Biblioteca) — cai pra paleta
       // genérica só pros que ainda não têm cor definida (ou "Sem gênero").
-      criarGrafico('g-genero', {
-        type: 'bar',
-        data: {
-          labels: dados.livrosPorGenero.map(g => g.genero),
-          datasets: [{ label: 'Livros', data: dados.livrosPorGenero.map(g => g.total), backgroundColor: dados.livrosPorGenero.map((g, i) => g.cor || PALETA[i % PALETA.length]), borderRadius: 4 }],
-        },
-        options: { ...opcoesEixo(cores), indexAxis: 'y' },
-      });
-      criarGrafico('g-genero-emprestado', {
-        type: 'bar',
-        data: {
-          labels: dados.generosMaisEmprestados.map(g => g.genero),
-          datasets: [{ label: 'Empréstimos', data: dados.generosMaisEmprestados.map(g => g.total), backgroundColor: dados.generosMaisEmprestados.map((g, i) => g.cor || PALETA[i % PALETA.length]), borderRadius: 4 }],
-        },
-        options: { ...opcoesEixo(cores), indexAxis: 'y' },
-      });
-      criarGrafico('g-top-livros', {
-        type: 'bar',
-        data: {
-          labels: dados.topLivros.map(l => l.titulo),
-          datasets: [{ label: 'Empréstimos', data: dados.topLivros.map(l => l.total), backgroundColor: cores.primaria, borderRadius: 4 }],
-        },
-        options: { ...opcoesEixo(cores), indexAxis: 'y' },
-      });
+      criarGrafico('g-genero', configItensPorGenero(dados.livrosPorGenero));
+      criarGrafico('g-genero-emprestado', configGenerosMaisEmprestados(dados.generosMaisEmprestados));
+      criarGrafico('g-top-livros', configTopItens(dados.topLivros));
     }
 
     if (aba === 'alunos') {
@@ -336,6 +382,16 @@ export default async function renderEstatisticas(container) {
       });
       criarGraficosDaAba(btn.dataset.aba);
     });
+  });
+
+  container.querySelector('#filtro-tipo-genero').addEventListener('change', (e) => {
+    atualizarGraficoPorTipo(e.target.value, 'g-genero', 'livrosPorGenero', configItensPorGenero);
+  });
+  container.querySelector('#filtro-tipo-genero-emprestado').addEventListener('change', (e) => {
+    atualizarGraficoPorTipo(e.target.value, 'g-genero-emprestado', 'generosMaisEmprestados', configGenerosMaisEmprestados);
+  });
+  container.querySelector('#filtro-tipo-top-livros').addEventListener('change', (e) => {
+    atualizarGraficoPorTipo(e.target.value, 'g-top-livros', 'topLivros', configTopItens);
   });
 
   container.querySelector('#btn-imprimir').addEventListener('click', () => {

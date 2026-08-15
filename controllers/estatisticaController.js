@@ -26,9 +26,15 @@ function ultimosMeses(n) {
   return meses;
 }
 
-// GET /api/estatisticas — dados agregados para a tela de estatísticas (gráficos)
+// GET /api/estatisticas?tipo_id= — dados agregados para a tela de estatísticas (gráficos).
+// "tipo_id" é opcional e só filtra os 3 gráficos com seletor de tipo próprio (itens mais
+// emprestados, gêneros mais emprestados, itens por gênero) — todo o resto do painel
+// continua olhando o acervo inteiro, sem esse filtro.
 exports.resumo = async (req, res) => {
   const podeVerAuditoria = req.usuario.papel.acessoTotal || req.usuario.permissoes.includes('auditoria.ver');
+  const { tipo_id } = req.query;
+  const filtroTipo = tipo_id ? 'AND l.tipo_id = $1' : '';
+  const paramsFiltroTipo = tipo_id ? [tipo_id] : [];
 
   const consultas = [
     // 0: empréstimos por mês (últimos 12 meses)
@@ -47,15 +53,16 @@ exports.resumo = async (req, res) => {
         COUNT(*) FILTER (WHERE status = 'devolvido')::int AS devolvidos
       FROM emprestimos
     `),
-    // 2: top 10 livros mais emprestados
+    // 2: top 10 itens mais emprestados (com seletor de tipo próprio)
     pool.query(`
       SELECT l.titulo, COUNT(*)::int AS total
       FROM emprestimos e
       JOIN livros l ON l.id = e.livro_id
+      WHERE 1=1 ${filtroTipo}
       GROUP BY l.id, l.titulo
       ORDER BY total DESC, l.titulo ASC
       LIMIT 10
-    `),
+    `, paramsFiltroTipo),
     // 3: top 10 alunos que mais emprestam
     pool.query(`
       SELECT a.nome, t.nome AS turma, COUNT(*)::int AS total
@@ -75,14 +82,15 @@ exports.resumo = async (req, res) => {
       GROUP BY t.nome
       ORDER BY total DESC
     `),
-    // 5: livros por gênero
+    // 5: itens por gênero (com seletor de tipo próprio)
     pool.query(`
       SELECT COALESCE(g.nome, 'Sem gênero') AS genero, g.cor, COUNT(*)::int AS total
       FROM livros l
       LEFT JOIN generos g ON g.id = l.genero_id
+      WHERE 1=1 ${filtroTipo}
       GROUP BY g.nome, g.cor
       ORDER BY total DESC
-    `),
+    `, paramsFiltroTipo),
     // 6: disponibilidade do acervo
     pool.query(`
       SELECT
@@ -123,15 +131,17 @@ exports.resumo = async (req, res) => {
       FROM emprestimos
       WHERE status = 'devolvido' AND data_devolucao IS NOT NULL
     `),
-    // 11: gêneros mais emprestados (por nº de empréstimos, não de livros no acervo)
+    // 11: gêneros mais emprestados (por nº de empréstimos, não de livros no acervo — com
+    // seletor de tipo próprio)
     pool.query(`
       SELECT COALESCE(g.nome, 'Sem gênero') AS genero, g.cor, COUNT(*)::int AS total
       FROM emprestimos e
       JOIN livros l ON l.id = e.livro_id
       LEFT JOIN generos g ON g.id = l.genero_id
+      WHERE 1=1 ${filtroTipo}
       GROUP BY g.nome, g.cor
       ORDER BY total DESC
-    `),
+    `, paramsFiltroTipo),
     // 12: alunos que mais leram, por soma de páginas dos livros emprestados — só
     // considera empréstimos de livros com número de páginas cadastrado
     pool.query(`

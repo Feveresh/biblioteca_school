@@ -586,6 +586,22 @@ label.toggle {
 }
 .grafico-wrap { position: relative; height: 280px; }
 .grafico-wrap.alto { height: 340px; }
+.painel-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.painel-cabecalho select {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  flex-shrink: 0;
+}
 
 /* ---------- Tabela ---------- */
 .tabela-wrap {

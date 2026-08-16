@@ -23,7 +23,7 @@ const CHAVE_ULTIMO_EMAIL = 'biblioteca_ultimo_email';
 
 const ROTAS = {
   '/': renderDashboard,
-  '/livros': renderLivros,
+  '/biblioteca': renderLivros,
   '/alunos': renderAlunos,
   '/emprestimos': renderEmprestimos,
   '/estatisticas': renderEstatisticas,
